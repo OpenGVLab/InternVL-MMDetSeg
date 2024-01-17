@@ -1,1 +1,144 @@
-# InternVL-DeepSpeed
+# <img width="60" alt="image" src="https://github.com/OpenGVLab/InternVL/assets/8529570/5aa4cda8-b453-40a0-9336-17012b430ae8"> Train InternVL in MMSegmentation and MMDetection with DeepSpeed
+
+This repository contains our customized mmcv/mmsegmentation/mmdetection code, integrated with DeepSpeed, which can be used for training large-scale object detection and semantic segmentation models.
+
+> Note, this codebase requires you to install a lower version of the environment (i.e., `torch==1.12.0`), which is different from our main repository's environment.
+
+## What is InternVL?
+
+\[[Paper](https://arxiv.org/abs/2312.14238)\]  \[[Chat Demo](https://internvl.opengvlab.com/)\] \[[Quick Start](#Installation)\]
+
+InternVL scales up the ViT to _**6B parameters**_ and aligns it with LLM.
+
+It is _**the largest open-source vision/vision-language foundation model (14B)**_ to date, achieving _**32 state-of-the-art**_ performances on a wide range of tasks such as visual perception, cross-modal retrieval, multimodal dialogue, etc.
+
+<img width="1204" alt="image" src="https://github.com/OpenGVLab/InternVL/assets/23737120/c9f93b54-fdba-4a69-9341-e905376f7b9c">
+
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/internvl-scaling-up-vision-foundation-models/zero-shot-cross-modal-retrieval-on-coco-2014)](https://paperswithcode.com/sota/zero-shot-cross-modal-retrieval-on-coco-2014?p=internvl-scaling-up-vision-foundation-models)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/internvl-scaling-up-vision-foundation-models/zero-shot-image-retrieval-on-coco-cn)](https://paperswithcode.com/sota/zero-shot-image-retrieval-on-coco-cn?p=internvl-scaling-up-vision-foundation-models)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/internvl-scaling-up-vision-foundation-models/zero-shot-cross-modal-retrieval-on-flickr30k)](https://paperswithcode.com/sota/zero-shot-cross-modal-retrieval-on-flickr30k?p=internvl-scaling-up-vision-foundation-models)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/internvl-scaling-up-vision-foundation-models/image-to-text-retrieval-on-flickr30k)](https://paperswithcode.com/sota/image-to-text-retrieval-on-flickr30k?p=internvl-scaling-up-vision-foundation-models)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/internvl-scaling-up-vision-foundation-models/zero-shot-image-retrieval-on-flickr30k-cn)](https://paperswithcode.com/sota/zero-shot-image-retrieval-on-flickr30k-cn?p=internvl-scaling-up-vision-foundation-models)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/internvl-scaling-up-vision-foundation-models/image-retrieval-on-flickr30k-cn)](https://paperswithcode.com/sota/image-retrieval-on-flickr30k-cn?p=internvl-scaling-up-vision-foundation-models)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/internvl-scaling-up-vision-foundation-models/zero-shot-image-retrieval-on-xtd10)](https://paperswithcode.com/sota/zero-shot-image-retrieval-on-xtd10?p=internvl-scaling-up-vision-foundation-models)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/internvl-scaling-up-vision-foundation-models/zero-shot-transfer-image-classification-on-cn)](https://paperswithcode.com/sota/zero-shot-transfer-image-classification-on-cn?p=internvl-scaling-up-vision-foundation-models)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/internvl-scaling-up-vision-foundation-models/zero-shot-transfer-image-classification-on-8)](https://paperswithcode.com/sota/zero-shot-transfer-image-classification-on-8?p=internvl-scaling-up-vision-foundation-models)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/internvl-scaling-up-vision-foundation-models/zero-shot-video-retrieval-on-msr-vtt)](https://paperswithcode.com/sota/zero-shot-video-retrieval-on-msr-vtt?p=internvl-scaling-up-vision-foundation-models)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/internvl-scaling-up-vision-foundation-models/zero-shot-transfer-image-classification-on-6)](https://paperswithcode.com/sota/zero-shot-transfer-image-classification-on-6?p=internvl-scaling-up-vision-foundation-models)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/internvl-scaling-up-vision-foundation-models/zero-shot-transfer-image-classification-on-5)](https://paperswithcode.com/sota/zero-shot-transfer-image-classification-on-5?p=internvl-scaling-up-vision-foundation-models)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/internvl-scaling-up-vision-foundation-models/zero-shot-transfer-image-classification-on-3)](https://paperswithcode.com/sota/zero-shot-transfer-image-classification-on-3?p=internvl-scaling-up-vision-foundation-models)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/internvl-scaling-up-vision-foundation-models/zero-shot-transfer-image-classification-on-1)](https://paperswithcode.com/sota/zero-shot-transfer-image-classification-on-1?p=internvl-scaling-up-vision-foundation-models)
+
+## Performance
+
+- Semantic Segmentation [\[see details\]](./mmsegmentation#-evaluation)
+
+  | method                | decoder | #param (train/total) | crop size | mIoU         |
+  | --------------------- | :-----: | :------------------: | :-------: | ------------ |
+  | OpenCLIP-G (frozen)   | Linear  |     0.3M / 1.8B      |    512    | 39.3         |
+  | ViT-22B (frozen)      | Linear  |     0.9M / 21.7B     |    504    | 34.6         |
+  | InternViT-6B (frozen) | Linear  |     0.5M / 5.9B      |    504    | 47.2 (+12.6) |
+  | ViT-22B (frozen)      | UperNet |     0.8B / 22.5B     |    504    | 52.7         |
+  | InternViT-6B (frozen) | UperNet |     0.4B / 6.3B      |    504    | 54.9 (+2.2)  |
+  | ViT-22B               | UperNet |    22.5B / 22.5B     |    504    | 55.3         |
+  | InternViT-6B          | UperNet |     6.3B / 6.3B      |    504    | 58.9 (+3.6)  |
+
+## Installation
+
+> Note, this codebase requires you to install a lower version of the environment (i.e., `torch==1.12.0`), which is different from our main repository's environment.
+
+- Clone this repo:
+
+  ```bash
+  git clone https://github.com/OpenGVLab/InternVL-MMDetSeg
+  cd InternVL-MMDetSeg/
+  ```
+
+- Create a conda virtual environment and activate it:
+
+  ```bash
+  conda create -n internvl-mmdetseg python=3.9 -y
+  conda activate internvl-mmdetseg
+  ```
+
+- Install `PyTorch>=1.11<2.0` and `torchvision>=0.13.0` with `CUDA>=10.2`:
+
+  For example, to install torch==1.12.0 with CUDA==11.3:
+
+  ```bash
+  conda install pytorch==1.12.0 torchvision==0.13.0 torchaudio==0.12.0 cudatoolkit=11.3 -c pytorch
+  # or
+  pip install torch==1.12.0+cu113 torchvision==0.13.0+cu113 torchaudio==0.12.0 --extra-index-url https://download.pytorch.org/whl/cu113
+  ```
+
+- Install `flash-attn==0.2.8` :
+
+  If you want to fully replicate my results, please install `v0.2.8`, otherwise install the latest version.
+
+  This is because different versions of flash attention yield slight differences in results.
+
+  ```bash
+  git clone https://github.com/Dao-AILab/flash-attention.git
+  cd flash-attention
+  git checkout v0.2.8
+  pip install ninja
+  python setup.py install # I use gcc-7.3 to compile this package
+  ```
+
+- Install other requirements:
+
+  ```bash
+  conda install -c conda-forge termcolor yacs pyyaml scipy pip -y
+  pip install opencv-python
+  pip install timm==0.6.11
+  pip install yapf==0.40.1
+  pip install addict
+  pip install deepspeed==0.8.0 # please install this old version
+  ```
+
+- Install `tensorboard`:
+
+  ```bash
+  pip install future tensorboard
+  ```
+
+- Install our customized `mmcv-full==1.7.0`:
+
+  ```bash
+  cd mmcv/
+  export MMCV_WITH_OPS=1
+  python setup.py develop
+  cd ../
+  ```
+
+- Install our customized mmsegmentation & mmdetection:
+
+  ```bash
+  cd mmsegmentation/
+  python setup.py develop
+  cd ../
+  cd mmdetection/
+  python setup.py develop
+  cd ../
+  ```
+
+## Quick Start with MMSegmentation
+
+## Schedule
+
+- [ ] Release customized MMDetection
+- [x] Release customized MMSegmentation
+- [x] Release customized MMCV
+
+## Citation
+
+If you find this project useful in your research, please consider citing:
+
+```BibTeX
+@article{chen2023internvl,
+  title={InternVL: Scaling up Vision Foundation Models and Aligning for Generic Visual-Linguistic Tasks},
+  author={Chen, Zhe and Wu, Jiannan and Wang, Wenhai and Su, Weijie and Chen, Guo and Xing, Sen and Zhong, Muyan and Zhang, Qinglong and Zhu, Xizhou and Lu, Lewei and Li, Bin and Luo, Ping and Lu, Tong and Qiao, Yu and Dai, Jifeng},
+  journal={arXiv preprint arXiv:2312.14238},
+  year={2023}
+}
+```
