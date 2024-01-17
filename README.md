@@ -1,4 +1,4 @@
-# <img width="60" alt="image" src="https://github.com/OpenGVLab/InternVL/assets/8529570/5aa4cda8-b453-40a0-9336-17012b430ae8"> Train InternVL in MMSegmentation and MMDetection with DeepSpeed
+# <img width="60" alt="image" src="https://github.com/OpenGVLab/InternVL/assets/8529570/5aa4cda8-b453-40a0-9336-17012b430ae8"> Train InternViT-6B in MMSegmentation and MMDetection with DeepSpeed
 
 This repository contains our customized mmcv/mmsegmentation/mmdetection code, integrated with DeepSpeed, which can be used for training large-scale object detection and semantic segmentation models.
 
@@ -128,9 +128,11 @@ The usage is basically consistent with that of common mmsegmentation and mmdetec
 
 Please enter the corresponding folder to check README.
 
+- [mmsegmentation](./mmsegmentation)
+
 - [mmdetection](./mmdetection)
 
-- [mmsegmentation](./segmentation)
+
 
 ## Schedule
 
