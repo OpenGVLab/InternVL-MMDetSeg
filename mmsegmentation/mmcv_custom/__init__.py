@@ -1,11 +1,3 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-
-# All rights reserved.
-
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-
-
 # -*- coding: utf-8 -*-
 from .layer_decay_optimizer_constructor import CustomLayerDecayOptimizerConstructor
 import torch
@@ -46,7 +38,7 @@ if torch_version >= 1.11:
 
     @HOOKS.register_module()
     class ToBFloat16Hook(Hook):
-    
+
         def before_run(self, runner):
             runner.model.module.backbone.to(torch.bfloat16)
             runner.model.module.decode_head.to(torch.float32)
@@ -59,7 +51,7 @@ if torch_version >= 1.11:
 
     @HOOKS.register_module()
     class ToFloat16Hook(Hook):
-    
+
         def before_run(self, runner):
             runner.model.module.backbone.to(torch.float16)
             runner.model.module.decode_head.to(torch.float32)
