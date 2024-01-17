@@ -122,11 +122,19 @@ It is _**the largest open-source vision/vision-language foundation model (14B)**
   cd ../
   ```
 
-## Quick Start with MMSegmentation
+## How to use?
+
+The usage is basically consistent with that of common mmsegmentation and mmdetection. 
+
+Please enter the corresponding folder to check README.
+
+- [mmdetection](./mmdetection)
+
+- [mmsegmentation](./segmentation)
 
 ## Schedule
 
-- [ ] Release customized MMDetection
+- [x] Release customized MMDetection
 - [x] Release customized MMSegmentation
 - [x] Release customized MMCV
 
