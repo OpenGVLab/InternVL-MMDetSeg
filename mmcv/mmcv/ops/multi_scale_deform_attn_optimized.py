@@ -18,7 +18,7 @@ from mmcv.runner import BaseModule
 try:
     import MultiScaleDeformableAttention as ext_module
 except:
-    print("please install the MultiScaleDeformableAttention in ops/")
+    print("Please install MSDeformAttn if you want to use ViT-Adapter")
 
 
 class MultiScaleDeformableAttnFunction(Function):

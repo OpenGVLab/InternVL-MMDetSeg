@@ -3,7 +3,10 @@ from functools import partial
 
 import torch
 import torch.nn as nn
-from ops.deformable_attention.modules import MSDeformAttn
+try:
+    from ops.deformable_attention.modules import MSDeformAttn
+except:
+    print("Please install MSDeformAttn if you want to use ViT-Adapter")
 from timm.models.layers import DropPath
 import torch.utils.checkpoint as cp
 import torch.nn.functional as F

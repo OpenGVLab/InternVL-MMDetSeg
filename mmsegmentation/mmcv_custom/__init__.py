@@ -15,11 +15,11 @@ __all__ = ['CustomLayerDecayOptimizerConstructor',]
 
 torch_version = float(torch.__version__[:4])
 if torch_version >= 1.11:
-    
+
     from mmcv.runner.hooks import HOOKS, Hook
     from mmcv.runner.optimizer.builder import OPTIMIZERS
     from torch.distributed.optim import ZeroRedundancyOptimizer
-    
+
     @OPTIMIZERS.register_module()
     class ZeroAdamW(ZeroRedundancyOptimizer):
         def __init__(self, params, optimizer_class=torch.optim.AdamW, **kwargs):
@@ -29,15 +29,16 @@ if torch_version >= 1.11:
                              **kwargs)
             for i in range(1, len(params)):
                 self.add_param_group(params[i])
-                
+
+
     @HOOKS.register_module()
     class ZeroHook(Hook):
         def __init__(self, interval):
             self.interval = interval
-            
+
         def after_epoch(self, runner):
             runner.optimizer.consolidate_state_dict(to=0)
-        
+
         def after_train_iter(self, runner):
             if self.every_n_iters(runner, self.interval):
                 runner.optimizer.consolidate_state_dict(to=0)

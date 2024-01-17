@@ -9,7 +9,10 @@ from mmseg.models.builder import BACKBONES
 from timm.models.layers import trunc_normal_
 from torch.nn.init import normal_
 
-from ops.deformable_attention.modules import MSDeformAttn
+try:
+    from ops.deformable_attention.modules import MSDeformAttn
+except:
+    print("Please install MSDeformAttn if you want to use ViT-Adapter")
 from .adapter_modules import SpatialPriorModule, InteractionBlock, deform_inputs, LayerNorm
 from .intern_vit_6b import InternViT6B
 
