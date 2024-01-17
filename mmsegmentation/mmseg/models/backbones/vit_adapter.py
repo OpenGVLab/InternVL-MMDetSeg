@@ -26,13 +26,13 @@ def _freeze_params(module):
 
 @BACKBONES.register_module()
 class InternViTAdapter(InternViT6B):
-    def __init__(self, pretrain_size=224, num_heads=12, conv_inplane=64, n_points=4, deform_num_heads=6,
+    def __init__(self, pretrain_size=224, num_heads=25, conv_inplane=64, n_points=4, deform_num_heads=25,
                  init_values=0., interaction_indexes=None, with_cffn=True, cffn_ratio=0.25,
-                 deform_ratio=1.0, add_vit_feature=True, use_extra_extractor=True, with_cp=False,
+                 deform_ratio=0.5, add_vit_feature=True, use_extra_extractor=True, with_cp=True,
                  out_indices=(0, 1, 2, 3), use_final_norm=True, *args, **kwargs):
-        
+
         super().__init__(num_heads=num_heads, with_cp=with_cp, *args, **kwargs)
-        
+
         # self.num_classes = 80
         self.cls_token = None
         self.num_block = len(self.blocks)
@@ -42,7 +42,7 @@ class InternViTAdapter(InternViT6B):
         self.out_indices = out_indices
         self.use_final_norm = use_final_norm
         embed_dim = self.embed_dim
-        
+
         self.level_embed = nn.Parameter(torch.zeros(3, embed_dim))
         self.spm = SpatialPriorModule(inplanes=conv_inplane, embed_dim=embed_dim,
                                       out_indices=out_indices)
@@ -61,12 +61,12 @@ class InternViTAdapter(InternViT6B):
             if self.use_final_norm:
                 self.norm1 = LayerNorm(embed_dim)
             self.up.apply(self._init_weights)
-        
+
         if self.use_final_norm:
             self.norm2 = LayerNorm(embed_dim)
             self.norm3 = LayerNorm(embed_dim)
             self.norm4 = LayerNorm(embed_dim)
-        
+
         self.spm.apply(self._init_weights)
         self.interactions.apply(self._init_weights)
         self.apply(self._init_deform_weights)
@@ -74,7 +74,7 @@ class InternViTAdapter(InternViT6B):
         _freeze_params(self.blocks)
         _freeze_params(self.patch_embed)
         self.pos_embed.requires_grad = False
-    
+
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
             trunc_normal_(m.weight, std=.02)
@@ -89,24 +89,17 @@ class InternViTAdapter(InternViT6B):
             m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
             if m.bias is not None:
                 m.bias.data.zero_()
-    
-    def _get_pos_embed(self, pos_embed, H, W):
-        pos_embed = pos_embed.reshape(
-            1, self.pretrain_size[0] // 16, self.pretrain_size[1] // 16, -1).permute(0, 3, 1, 2)
-        pos_embed = F.interpolate(pos_embed, size=(H, W), mode='bicubic', align_corners=False). \
-            reshape(1, -1, H * W).permute(0, 2, 1)
-        return pos_embed
-    
+
     def _init_deform_weights(self, m):
         if isinstance(m, MSDeformAttn):
             m._reset_parameters()
-    
+
     def _add_level_embed(self, c2, c3, c4):
         c2 = c2 + self.level_embed[0]
         c3 = c3 + self.level_embed[1]
         c4 = c4 + self.level_embed[2]
         return c2, c3, c4
-    
+
     def forward(self, x):
         deform_inputs1, deform_inputs2 = deform_inputs(x)
         x = x.to(self.dtype)
@@ -115,33 +108,33 @@ class InternViTAdapter(InternViT6B):
             c1, c2, c3, c4 = self.spm(x)
         else:
             c2, c3, c4 = self.spm(x)
-        
+
         c2, c3, c4 = self._add_level_embed(c2, c3, c4)
         c = torch.cat([c2, c3, c4], dim=1)
-        
+
         # Patch Embedding forward
         x, H, W = self.patch_embed(x)
         bs, n, dim = x.shape
         # pos_embed = self._get_pos_embed(self.pos_embed[:, 1:], H, W)
         x = self.pos_drop(x + self.pos_embed[:, 1:])
-        
+
         # Interaction
         for i, layer in enumerate(self.interactions):
             indexes = self.interaction_indexes[i]
             x, c = layer(x, c, self.blocks[indexes[0]:indexes[-1] + 1],
                          deform_inputs1, deform_inputs2, H, W)
-        
+
         # Split & Reshape
         c2 = c[:, 0:c2.size(1), :]
         c3 = c[:, c2.size(1):c2.size(1) + c3.size(1), :]
         c4 = c[:, c2.size(1) + c3.size(1):, :]
-        
+
         c2 = c2.transpose(1, 2).view(bs, dim, H * 2, W * 2).contiguous()
         c3 = c3.transpose(1, 2).view(bs, dim, H, W).contiguous()
         c4 = c4.transpose(1, 2).view(bs, dim, H // 2, W // 2).contiguous()
         if len(self.out_indices) == 4:
             c1 = self.up(c2) + c1
-        
+
         if self.add_vit_feature:
             if len(self.out_indices) == 4:
                 x3 = x.transpose(1, 2).view(bs, dim, H, W).contiguous()
@@ -154,7 +147,7 @@ class InternViTAdapter(InternViT6B):
                 x2 = F.interpolate(x3, scale_factor=2, mode='bilinear', align_corners=False)
                 x4 = F.interpolate(x3, scale_factor=0.5, mode='bilinear', align_corners=False)
                 c2, c3, c4 = c2 + x2, c3 + x3, c4 + x4
-        
+
         # Final Norm
         if self.use_final_norm:
             if len(self.out_indices) == 4:
