@@ -3,7 +3,6 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Hyperparams')
 parser.add_argument('filename', nargs='?', type=str, default=None)
-parser.add_argument('--double_pos', action='store_true')
 
 args = parser.parse_args()
 
@@ -17,8 +16,7 @@ state_dict = model['module']
 # print(new_state_dict.keys())
 # new_dict = {'module': new_state_dict}
 print(state_dict.keys())
-if args.double_pos:
-    state_dict['backbone.pos_embed'] *= 2
+
 
 new_dict = {'module': state_dict}
 torch.save(new_dict, args.filename.replace(".pt", "_release.pt"))

@@ -225,7 +225,7 @@ class Block(nn.Module):
 
         self.with_cp = with_cp
 
-    def forward(self, x, H, W):
+    def forward(self, x, H=None, W=None):
 
         def _inner_forward(x):
             x = x + self.drop_path1(self.ls1(self.attn(self.norm1(x))))
