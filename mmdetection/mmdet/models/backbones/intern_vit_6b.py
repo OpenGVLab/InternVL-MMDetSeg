@@ -383,7 +383,8 @@ class InternViT6B(BaseModule):
     def __init__(self, in_chans=3, patch_size=14, img_size=224, pretrain_size=224, qkv_bias=False, drop_path_rate=0.0,
                  embed_dim=3200, num_heads=25, mlp_ratio=4, init_values=0.1, qk_normalization=True, depth=48,
                  use_flash_attn=True, with_cp=True, layerscale_force_fp32=False, out_indices=[7, 11, 15, 23],
-                 freeze_vit=False, with_fpn=False, with_final_norm=False, window_attn=False, window_size=14, pretrained=None):
+                 freeze_vit=False, with_fpn=False, with_final_norm=False, window_attn=False, window_size=14,
+                 output_dtype="float16", pretrained=None):
 
         super().__init__()
 
@@ -395,6 +396,14 @@ class InternViT6B(BaseModule):
         self.patch_size = patch_size
         self.out_indices = out_indices
         self.with_fpn = with_fpn
+        if output_dtype == 'float16':
+            self.output_dtype = torch.float16
+        elif output_dtype == 'bfloat16':
+            self.output_dtype = torch.bfloat16
+        elif output_dtype == 'float32':
+            self.output_dtype = torch.float32
+        else:
+            raise NotImplementedError
 
         use_flash_attn = use_flash_attn and has_flash_attn
         if use_flash_attn and not has_flash_attn:
@@ -531,8 +540,8 @@ class InternViT6B(BaseModule):
                 outs.append(out)
 
         x = outs[-1]
-        f1 = self.up1(x).contiguous()
-        f2 = self.up2(x).contiguous()
-        f3 = self.up3(x).contiguous()
-        f4 = self.up4(x).contiguous()
+        f1 = self.up1(x).to(self.output_dtype).contiguous()
+        f2 = self.up2(x).to(self.output_dtype).contiguous()
+        f3 = self.up3(x).to(self.output_dtype).contiguous()
+        f4 = self.up4(x).to(self.output_dtype).contiguous()
         return [f1, f2, f3, f4]

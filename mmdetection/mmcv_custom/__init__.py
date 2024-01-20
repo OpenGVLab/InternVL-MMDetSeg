@@ -90,6 +90,7 @@ if torch_version >= 1.11:
         def to_type(self, runner, name, type):
             if hasattr(runner.model.module, name):
                 getattr(runner.model.module, name).to(type)
+                runner.model.module.fp16_enabled = False
                 print(f"Set: {name} to {type}")
 
         def before_run(self, runner):
@@ -106,6 +107,7 @@ if torch_version >= 1.11:
         def to_type(self, runner, name, type):
             if hasattr(runner.model.module, name):
                 getattr(runner.model.module, name).to(type)
+                runner.model.module.fp16_enabled = False
                 print(f"Set: {name} to {type}")
 
         def before_run(self, runner):

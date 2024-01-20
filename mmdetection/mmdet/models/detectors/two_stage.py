@@ -66,6 +66,7 @@ class TwoStageDetector(BaseDetector):
         """Directly extract features from the backbone+neck."""
         x = self.backbone(img)
         if self.with_neck:
+            self.neck = self.neck.to(torch.float32)
             x = self.neck(x)
         return x
 
@@ -132,6 +133,7 @@ class TwoStageDetector(BaseDetector):
         if self.with_rpn:
             proposal_cfg = self.train_cfg.get('rpn_proposal',
                                               self.test_cfg.rpn)
+            self.rpn_head = self.rpn_head.to(torch.float32)
             rpn_losses, proposal_list = self.rpn_head.forward_train(
                 x,
                 img_metas,
@@ -144,6 +146,7 @@ class TwoStageDetector(BaseDetector):
         else:
             proposal_list = proposals
 
+        self.roi_head = self.roi_head.to(torch.float32)
         roi_losses = self.roi_head.forward_train(x, img_metas, proposal_list,
                                                  gt_bboxes, gt_labels,
                                                  gt_bboxes_ignore, gt_masks,

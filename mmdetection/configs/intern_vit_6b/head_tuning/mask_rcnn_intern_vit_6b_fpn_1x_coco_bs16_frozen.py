@@ -9,8 +9,8 @@ _base_ = [
     '../../_base_/schedules/schedule_1x.py',
     '../../_base_/default_runtime.py'
 ]
-deepspeed = False
-deepspeed_config = 'zero_configs/adam_zero1_bf16.json'
+deepspeed = True
+deepspeed_config = 'zero_configs/adam_zero1_fp16.json'
 pretrained = './pretrained/intern_vit_6b_224px.pth'
 model = dict(
     backbone=dict(
@@ -32,9 +32,10 @@ model = dict(
         layerscale_force_fp32=False,
         with_fpn=True,
         freeze_vit=True,
-        out_indices=[11, 23, 35, 47],
+        out_indices=[47],
         window_attn=[True] * 48,
         window_size=[16] * 48,
+        output_dtype='float32',
         pretrained=pretrained),
     neck=dict(
         type='FPN',
@@ -54,6 +55,6 @@ else:
 evaluation = dict(interval=1, save_best='auto')
 custom_hooks = [
     dict(
-        type='ToBFloat16Hook',
+        type='ToFloat16Hook',
         priority=49),
 ]
