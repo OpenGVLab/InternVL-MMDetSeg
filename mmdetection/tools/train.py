@@ -5,7 +5,7 @@ import os
 import os.path as osp
 import time
 import warnings
-
+import mmcv_custom  # noqa
 import mmcv
 import torch
 import torch.distributed as dist

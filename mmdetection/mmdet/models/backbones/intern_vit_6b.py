@@ -17,7 +17,6 @@ from mmcv.runner import BaseModule
 from mmdet.models.builder import BACKBONES
 from mmdet.utils import get_root_logger
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
-from .scale_up_vit import window_reverse, window_partition
 
 try:
     from .flash_attention import FlashAttention
@@ -30,6 +29,36 @@ except:
 def _freeze_params(module):
     for param in module.parameters():
         param.requires_grad = False
+
+
+def window_partition(x, window_size):
+    """
+    Args:
+        x: (B, H, W, C)
+        window_size (int): window size
+    Returns:
+        windows: (num_windows*B, window_size, window_size, C)
+    """
+    B, H, W, C = x.shape
+    x = x.view(B, H // window_size, window_size, W // window_size, window_size, C)
+    windows = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, window_size, window_size, C)
+    return windows
+
+
+def window_reverse(windows, window_size, H, W):
+    """
+    Args:
+        windows: (num_windows*B, window_size, window_size, C)
+        window_size (int): Window size
+        H (int): Height of image
+        W (int): Width of image
+    Returns:
+        x: (B, H, W, C)
+    """
+    B = int(windows.shape[0] / (H * W / window_size / window_size))
+    x = windows.view(B, H // window_size, W // window_size, window_size, window_size, -1)
+    x = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(B, H, W, -1)
+    return x
 
 
 class LayerNorm(nn.Module):
@@ -244,7 +273,7 @@ class Attention(nn.Module):
         outs = self.proj_drop(outs)
         return outs
 
-    def forward(self, x, H, W):
+    def forward(self, x, H=None, W=None):
         x = self._naive_attn(x) if not self.use_flash_attn else self._flash_attn(x)
         return x
 
@@ -285,7 +314,6 @@ class Block(nn.Module):
         super().__init__()
 
         self.norm1 = norm_layer(dim)
-        
         if windowed:
             self.attn = WindowedAttention(dim, num_heads=num_heads, qkv_bias=qkv_bias, attn_drop=attn_drop,
                                           proj_drop=drop, use_flash_attn=use_flash_attn, causal=False,
@@ -309,7 +337,7 @@ class Block(nn.Module):
 
         self.with_cp = with_cp
 
-    def forward(self, x, H, W):
+    def forward(self, x, H=None, W=None):
 
         def _inner_forward(x, H, W):
             x = x + self.drop_path1(self.ls1(self.attn(self.norm1(x), H, W)))
@@ -388,7 +416,7 @@ class InternViT6B(BaseModule):
         self.pos_drop = nn.Identity()
         # self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
         self.cls_token = None
-        
+
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]
 
         self.blocks = nn.ModuleList([
@@ -480,8 +508,8 @@ class InternViT6B(BaseModule):
     def _get_pos_embed(self, pos_embed, H, W):
         pos_embed = pos_embed.reshape(
             1, self.img_size // self.patch_size, self.img_size // self.patch_size, -1).permute(0, 3, 1, 2)
-        pos_embed = F.interpolate(pos_embed, size=(H, W), mode='bicubic', align_corners=False).\
-            reshape(1, -1, H * W).permute(0, 2, 1)
+        pos_embed = F.interpolate(pos_embed.float(), size=(H, W), mode='bicubic', align_corners=False).\
+            reshape(1, -1, H * W).permute(0, 2, 1).to(pos_embed.dtype)
         return pos_embed
 
     @property
@@ -503,7 +531,8 @@ class InternViT6B(BaseModule):
                 outs.append(out)
 
         x = outs[-1]
+        f1 = self.up1(x).contiguous()
         f2 = self.up2(x).contiguous()
         f3 = self.up3(x).contiguous()
         f4 = self.up4(x).contiguous()
-        return [f2, f3, f4]
+        return [f1, f2, f3, f4]

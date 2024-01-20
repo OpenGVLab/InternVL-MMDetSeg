@@ -4,7 +4,8 @@ import os
 import os.path as osp
 import time
 import warnings
-import deepspeed
+import deepspeed  # noqa
+import mmcv_custom  # noqa
 import mmcv
 import torch
 from mmcv import Config, DictAction
@@ -23,7 +24,6 @@ from mmdet.utils import (build_ddp, build_dp, compat_cfg, get_device,
 # DeepSpeed inference requires the config to fit TensorParallel.
 # This is temporary added for ViT and may needs to be modified for other model. 
 from timm.models.vision_transformer import Block
-
 
 
 def parse_args():

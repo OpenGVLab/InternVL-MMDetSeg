@@ -1,29 +1,26 @@
 # -*- coding: utf-8 -*-
-import mmcv
-
-from .layer_decay_optimizer_constructor import LayerDecayOptimizerConstructor
-from .layer_decay_optimizer_constructor_v2 import LayerDecayOptimizerConstructorV2
+from .layer_decay_optimizer_constructor import CustomLayerDecayOptimizerConstructor
 from .customized_text import CustomizedTextLoggerHook
 from .checkpoint import load_checkpoint
 import torch
 
-__all__ = ['LayerDecayOptimizerConstructor',
-           'LayerDecayOptimizerConstructorV2',
-           'CustomizedTextLoggerHook',
-           'load_checkpoint'
-           ]
+__all__ = [
+    'CustomLayerDecayOptimizerConstructor',
+    'CustomizedTextLoggerHook',
+    'load_checkpoint'
+]
 
 
 torch_version = float(torch.__version__[:4])
 if torch_version >= 1.11:
-    
+
     from mmcv.runner.hooks import HOOKS, Hook
     from mmcv.runner.optimizer.builder import OPTIMIZERS
     from torch.distributed.optim import ZeroRedundancyOptimizer
     from mmdet.utils.util_distribution import ddp_factory   # noqa: F401,F403
     from mmdet.core.optimizers import Lion, Adan
-    
-    
+
+
     try:
         import apex
         OPTIMIZERS.register_module(apex.optimizers.FusedAdam)
@@ -39,8 +36,8 @@ if torch_version >= 1.11:
                     self.add_param_group(params[i])
     except:
         print("please install apex for fused_adamw")
-    
-    
+
+
     @OPTIMIZERS.register_module()
     class ZeroAdamW(ZeroRedundancyOptimizer):
         def __init__(self, params, optimizer_class=torch.optim.AdamW, **kwargs):
@@ -61,7 +58,7 @@ if torch_version >= 1.11:
                              **kwargs)
             for i in range(1, len(params)):
                 self.add_param_group(params[i])
-    
+
 
     @OPTIMIZERS.register_module()
     class ZeroAdan(ZeroRedundancyOptimizer):
@@ -72,16 +69,48 @@ if torch_version >= 1.11:
                              **kwargs)
             for i in range(1, len(params)):
                 self.add_param_group(params[i])
-                
-                
+
+
     @HOOKS.register_module()
     class ZeroHook(Hook):
         def __init__(self, interval):
             self.interval = interval
-            
+
         def after_epoch(self, runner):
             runner.optimizer.consolidate_state_dict(to=0)
-        
+
         def after_train_iter(self, runner):
             if self.every_n_iters(runner, self.interval):
                 runner.optimizer.consolidate_state_dict(to=0)
+
+
+    @HOOKS.register_module()
+    class ToBFloat16Hook(Hook):
+
+        def to_type(self, runner, name, type):
+            if hasattr(runner.model.module, name):
+                getattr(runner.model.module, name).to(type)
+                print(f"Set: {name} to {type}")
+
+        def before_run(self, runner):
+            self.to_type(runner, 'backbone', torch.bfloat16)
+            self.to_type(runner, 'decode_head', torch.float32)
+            self.to_type(runner, 'neck', torch.float32)
+            self.to_type(runner, 'rpn_head', torch.float32)
+            self.to_type(runner, 'roi_head', torch.float32)
+
+
+    @HOOKS.register_module()
+    class ToFloat16Hook(Hook):
+
+        def to_type(self, runner, name, type):
+            if hasattr(runner.model.module, name):
+                getattr(runner.model.module, name).to(type)
+                print(f"Set: {name} to {type}")
+
+        def before_run(self, runner):
+            self.to_type(runner, 'backbone', torch.float16)
+            self.to_type(runner, 'decode_head', torch.float32)
+            self.to_type(runner, 'neck', torch.float32)
+            self.to_type(runner, 'rpn_head', torch.float32)
+            self.to_type(runner, 'roi_head', torch.float32)

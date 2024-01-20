@@ -21,9 +21,9 @@ class CustomizedTextLoggerHook(TextLoggerHook):
     """Customized Text Logger hook.
 
     This logger prints out both lr and layer_0_lr.
-        
+
     """
-    
+
     def _log_info(self, log_dict, runner):
         # print exp name for users to distinguish experiments
         # at every ``interval_exp_name`` iterations and the end of each epoch

@@ -34,7 +34,7 @@ def get_num_layer_for_vit(var_name, num_max_layer):
 
 
 @OPTIMIZER_BUILDERS.register_module()
-class LayerDecayOptimizerConstructor(DefaultOptimizerConstructor):
+class CustomLayerDecayOptimizerConstructor(DefaultOptimizerConstructor):
     def add_params(self, params, module, prefix='', is_dcn_module=None):
         """Add all parameters of module to the params list.
         The parameters of the given module will be added to the list of param
@@ -55,7 +55,7 @@ class LayerDecayOptimizerConstructor(DefaultOptimizerConstructor):
         layer_decay_rate = self.paramwise_cfg.get('layer_decay_rate')
         logger.info("Build LayerDecayOptimizerConstructor %f - %d" % (layer_decay_rate, num_layers))
         weight_decay = self.base_wd
-        
+
         for name, param in module.named_parameters():
             if not param.requires_grad:
                 continue  # frozen weights
@@ -65,13 +65,13 @@ class LayerDecayOptimizerConstructor(DefaultOptimizerConstructor):
             else:
                 group_name = "decay"
                 this_weight_decay = weight_decay
-            
+
             layer_id = get_num_layer_for_vit(name, num_layers)
             group_name = "layer_%d_%s" % (layer_id, group_name)
-            
+
             if group_name not in parameter_groups:
                 scale = layer_decay_rate ** (num_layers - layer_id - 1)
-                
+
                 parameter_groups[group_name] = {
                     "weight_decay": this_weight_decay,
                     "params": [],
@@ -80,7 +80,7 @@ class LayerDecayOptimizerConstructor(DefaultOptimizerConstructor):
                     "group_name": group_name,
                     "lr": scale * self.base_lr,
                 }
-            
+
             parameter_groups[group_name]["params"].append(param)
             parameter_groups[group_name]["param_names"].append(name)
         rank, _ = get_dist_info()
@@ -94,10 +94,5 @@ class LayerDecayOptimizerConstructor(DefaultOptimizerConstructor):
                     "weight_decay": parameter_groups[key]["weight_decay"],
                 }
             logger.info("Param groups = %s" % json.dumps(to_display, indent=2))
-        
-        # state_dict = module.state_dict()
-        # for group_name in parameter_groups:
-        #     group = parameter_groups[group_name]
-        #     for name in group["param_names"]:
-        #         group["params"].append(state_dict[name])
+
         params.extend(parameter_groups.values())
