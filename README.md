@@ -94,6 +94,7 @@ It is _**the largest open-source vision/vision-language foundation model (14B)**
   pip install yapf==0.40.1
   pip install addict
   pip install deepspeed==0.8.0 # please install this old version
+  pip install pydantic==1.10.2 # later versions may have compatibility issues
   ```
 
 - Install `tensorboard`:
@@ -120,6 +121,17 @@ It is _**the largest open-source vision/vision-language foundation model (14B)**
   cd mmdetection/
   python setup.py develop
   cd ../
+  ```
+
+- Compile the deformable attention (optional):
+
+  ```bash
+  # if you want to use ViT-Adapter, please compile the deformable attention operator
+  cd ops
+  sh compile.sh
+  # Soft link the `ops` folder to the mmsegmentation directory
+  cd ../mmsegmentation/
+  ln -s ../ops ./
   ```
 
 ## How to use?
