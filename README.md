@@ -12,8 +12,6 @@ InternVL scales up the ViT to _**6B parameters**_ and aligns it with LLM.
 
 It is _**the largest open-source vision/vision-language foundation model (14B)**_ to date, achieving _**32 state-of-the-art**_ performances on a wide range of tasks such as visual perception, cross-modal retrieval, multimodal dialogue, etc.
 
-<img width="1204" alt="image" src="https://github.com/OpenGVLab/InternVL/assets/23737120/c9f93b54-fdba-4a69-9341-e905376f7b9c">
-
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/internvl-scaling-up-vision-foundation-models/zero-shot-cross-modal-retrieval-on-coco-2014)](https://paperswithcode.com/sota/zero-shot-cross-modal-retrieval-on-coco-2014?p=internvl-scaling-up-vision-foundation-models)
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/internvl-scaling-up-vision-foundation-models/zero-shot-image-retrieval-on-coco-cn)](https://paperswithcode.com/sota/zero-shot-image-retrieval-on-coco-cn?p=internvl-scaling-up-vision-foundation-models)
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/internvl-scaling-up-vision-foundation-models/zero-shot-cross-modal-retrieval-on-flickr30k)](https://paperswithcode.com/sota/zero-shot-cross-modal-retrieval-on-flickr30k?p=internvl-scaling-up-vision-foundation-models)
