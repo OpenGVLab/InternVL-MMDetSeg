@@ -1,8 +1,11 @@
 # <img width="60" alt="image" src="https://github.com/OpenGVLab/InternVL/assets/8529570/5aa4cda8-b453-40a0-9336-17012b430ae8"> Train InternViT-6B in MMSegmentation and MMDetection with DeepSpeed
 
-This repository contains our customized mmcv/mmsegmentation/mmdetection code, integrated with DeepSpeed, which can be used for training large-scale object detection and semantic segmentation models.
+<div align="center">
+  <img width="500" alt="image" src="https://github.com/user-attachments/assets/930e6814-8a9f-43e1-a284-118a5732daa4">
+  <br>
+</div>
 
-> Note, this codebase requires you to install a lower version of the environment (i.e., `torch==1.12.0`), which is different from our main repository's environment.
+This repository contains our customized mmcv/mmsegmentation/mmdetection code, integrated with DeepSpeed, which can be used for training large-scale object detection and semantic segmentation models.
 
 ## What is InternVL?
 
@@ -42,7 +45,19 @@ It is _**the largest open-source vision/vision-language foundation model (14B)**
 
 ## Installation
 
-> Note, this codebase requires you to install a lower version of the environment (i.e., `torch==1.12.0`), which is different from our main repository's environment.
+> [!Warning]
+> <div align="left">
+> <b>
+> 🚨 This codebase requires you to install a lower version of the environment (i.e., torch==1.12.0), which is different from our main repository's environment.
+> </b>
+> </div>
+
+> [!Note]
+> <div align="left">
+> <b>
+> 📝 On 2024/10/24, the environment was successfully installed and verified by following the installation instructions below.
+> </b>
+> </div>
 
 - Clone this repo:
 
@@ -90,6 +105,7 @@ It is _**the largest open-source vision/vision-language foundation model (14B)**
   pip install timm==0.6.11
   pip install yapf==0.40.1
   pip install addict
+  pip install numpy==1.26.3 # please install this old version
   pip install deepspeed==0.8.0 # please install this old version
   pip install pydantic==1.10.2 # later versions may have compatibility issues
   ```

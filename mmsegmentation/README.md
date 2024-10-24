@@ -10,26 +10,39 @@ Prepare the ADE20K dataset according to the [guidelines](https://github.com/open
 
 ## 📦 Model Preparation
 
-| model name         | type    | download                                                                                  | size  |
-| ------------------ | ------- | ----------------------------------------------------------------------------------------- | :---: |
-| InternViT-6B-224px | pytorch | 🤗 [HF link](https://huggingface.co/OpenGVLab/InternVL/blob/main/intern_vit_6b_224px.pth) | 12 GB |
+| model name              | type    | download                                                                                       | size  |
+| ----------------------- | ------- | ---------------------------------------------------------------------------------------------- |:-----:|
+| InternViT-6B-224px      | pytorch | 🤗 [HF link](https://huggingface.co/OpenGVLab/InternVL/blob/main/intern_vit_6b_224px.pth)      | 12 GB |
+| InternViT-6B-448px-V1-0 | pytorch | 🤗 [HF link](https://huggingface.co/OpenGVLab/InternVL/blob/main/intern_vit_6b_448px_v1_0.pth) | 12 GB |
+| InternViT-6B-448px-V1-2 | pytorch | 🤗 [HF link](https://huggingface.co/OpenGVLab/InternVL/blob/main/intern_vit_6b_448px_v1_2.pth) | 11 GB |
+| InternViT-6B-448px-V1-5 | pytorch | 🤗 [HF link](https://huggingface.co/OpenGVLab/InternVL/blob/main/intern_vit_6b_448px_v1_5.pth) | 11 GB |
+| InternViT-6B-448px-V2-5 | pytorch | 🤗 [HF link](https://huggingface.co/OpenGVLab/InternVL/blob/main/intern_vit_6b_448px_v2_5.pth) | 11 GB |
 
 Please download the above model weight and place it in the `pretrained/` folder.
+
 ```sh
 mkdir pretrained & cd pretrained
 wget https://huggingface.co/OpenGVLab/InternVL/resolve/main/intern_vit_6b_224px.pth
+wget https://huggingface.co/OpenGVLab/InternVL/resolve/main/intern_vit_6b_448px_v1_0.pth
+wget https://huggingface.co/OpenGVLab/InternVL/resolve/main/intern_vit_6b_448px_v1_2.pth
+wget https://huggingface.co/OpenGVLab/InternVL/resolve/main/intern_vit_6b_448px_v1_5.pth
+wget https://huggingface.co/OpenGVLab/InternVL/resolve/main/intern_vit_6b_448px_v2_5.pth
 ```
 
 The directory structure is:
 
 ```sh
 pretrained
-└── intern_vit_6b_224px.pth
+├── intern_vit_6b_224px.pth
+├── intern_vit_6b_448px_v1_0.pth
+├── intern_vit_6b_448px_v1_2.pth
+├── intern_vit_6b_448px_v1_5.pth
+└── intern_vit_6b_448px_v2_5.pth
 ```
 
 ## 🔥 Training
 
-To train a linear classifier for `InternViT-6B` with 8 GPU on 1 node (total batch size 16), run:
+To train a linear classifier for `InternViT-6B-224px` with 8 GPU on 1 node (total batch size 16), run:
 
 ```bash
 sh tools/dist_train.sh configs/intern_vit_6b/linear_probing/linear_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_frozen.py 8
@@ -37,7 +50,7 @@ sh tools/dist_train.sh configs/intern_vit_6b/linear_probing/linear_intern_vit_6b
 GPUS=8 sh tools/slurm_train.sh <partition> <job-name> configs/intern_vit_6b/linear_probing/linear_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_frozen.py
 ```
 
-To train a UperNet with `InternViT-6B` with 8 GPU on 1 node (total batch size 16), run:
+To train a UperNet with `InternViT-6B-224px` with 8 GPU on 1 node (total batch size 16), run:
 
 ```bash
 sh tools/dist_train.sh configs/intern_vit_6b/full_tuning/upernet_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5.py 8
@@ -47,27 +60,27 @@ GPUS=8 sh tools/slurm_train.sh <partition> <job-name> configs/intern_vit_6b/full
 
 ## 📊 Evaluation
 
-| type            | backbone              |  head   | mIoU |                                                   config                                                   |                                                                                                                      download                                                                                                                       |
-| --------------- | --------------------- | :-----: | :--: | :--------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
-| few-shot (1/16) | InternViT-6B          | Linear  | 46.5 |     [config](./configs/intern_vit_6b/few_shot/linear_intern_vit_6b_504_5k_ade20k_bs16_lr4e-5_1of16.py)     |    [ckpt](https://huggingface.co/OpenGVLab/InternVL/resolve/main/linear_intern_vit_6b_504_5k_ade20k_bs16_lr4e-5_1of16.pth) \| [log](https://huggingface.co/OpenGVLab/InternVL/raw/main/linear_intern_vit_6b_504_5k_ade20k_bs16_lr4e-5_1of16.log)    |
-| few-shot (1/8)  | InternViT-6B          | Linear  | 50.0 |     [config](./configs/intern_vit_6b/few_shot/linear_intern_vit_6b_504_10k_ade20k_bs16_lr4e-5_1of8.py)     |    [ckpt](https://huggingface.co/OpenGVLab/InternVL/resolve/main/linear_intern_vit_6b_504_10k_ade20k_bs16_lr4e-5_1of8.pth) \| [log](https://huggingface.co/OpenGVLab/InternVL/raw/main/linear_intern_vit_6b_504_10k_ade20k_bs16_lr4e-5_1of8.log)    |
-| few-shot (1/4)  | InternViT-6B          | Linear  | 53.3 |     [config](./configs/intern_vit_6b/few_shot/linear_intern_vit_6b_504_20k_ade20k_bs16_lr4e-5_1of4.py)     |    [ckpt](https://huggingface.co/OpenGVLab/InternVL/resolve/main/linear_intern_vit_6b_504_20k_ade20k_bs16_lr4e-5_1of4.pth) \| [log](https://huggingface.co/OpenGVLab/InternVL/raw/main/linear_intern_vit_6b_504_20k_ade20k_bs16_lr4e-5_1of4.log)    |
-| few-shot (1/2)  | InternViT-6B          | Linear  | 55.8 |     [config](./configs/intern_vit_6b/few_shot/linear_intern_vit_6b_504_40k_ade20k_bs16_lr4e-5_1of2.py)     |    [ckpt](https://huggingface.co/OpenGVLab/InternVL/resolve/main/linear_intern_vit_6b_504_40k_ade20k_bs16_lr4e-5_1of2.pth) \| [log](https://huggingface.co/OpenGVLab/InternVL/raw/main/linear_intern_vit_6b_504_40k_ade20k_bs16_lr4e-5_1of2.log)    |
-| few-shot (1/1)  | InternViT-6B          | Linear  | 57.2 |     [config](./configs/intern_vit_6b/few_shot/linear_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_1of1.py)     |    [ckpt](https://huggingface.co/OpenGVLab/InternVL/resolve/main/linear_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_1of1.pth) \| [log](https://huggingface.co/OpenGVLab/InternVL/raw/main/linear_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_1of1.log)    |
-| linear probing  | InternViT-6B (frozen) | Linear  | 47.2 | [config](./configs/intern_vit_6b/linear_probing/linear_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_frozen.py) |  [ckpt](https://huggingface.co/OpenGVLab/InternVL/resolve/main/linear_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_frozen.pth) \| [log](https://huggingface.co/OpenGVLab/InternVL/raw/main/linear_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_frozen.log)  |
-| head tuning     | InternViT-6B (frozen) | UperNet | 54.9 |  [config](./configs/intern_vit_6b/head_tuning/upernet_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_frozen.py)  | [ckpt](https://huggingface.co/OpenGVLab/InternVL/resolve/main/upernet_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_frozen.pth) \| [log](https://huggingface.co/OpenGVLab/InternVL/raw/main/upernet_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_frozen.log) |
-| full tuning     | InternViT-6B          | UperNet | 58.9 |     [config](./configs/intern_vit_6b/full_tuning/upernet_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5.py)      |        [ckpt](https://huggingface.co/OpenGVLab/InternVL/resolve/main/upernet_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5.pth) \| [log](https://huggingface.co/OpenGVLab/InternVL/raw/main/upernet_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5.log)        |
-| adapter tuning     | InternViT-6B-Adapter | UperNet | 58.1 |     [config](./configs/intern_vit_6b/vit_adapter/upernet_intern_vit_adapter_6b_512_80k_ade20k_bs16_lr4e-5.py)      |        ckpt \| [log](https://huggingface.co/OpenGVLab/InternVL/raw/main/upernet_intern_vit_adapter_6b_512_80k_ade20k_bs16_lr4e-5.log)        |
+| type            | backbone                    | head    | mIoU | config                                                                                                     | download                                                                                                                                                                                                                                            |
+| --------------- | --------------------------- |:-------:|:----:|:----------------------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
+| few-shot (1/16) | InternViT-6B-224px          | Linear  | 46.5 | [config](./configs/intern_vit_6b/few_shot/linear_intern_vit_6b_504_5k_ade20k_bs16_lr4e-5_1of16.py)         | [ckpt](https://huggingface.co/OpenGVLab/InternVL/resolve/main/linear_intern_vit_6b_504_5k_ade20k_bs16_lr4e-5_1of16.pth) \| [log](https://huggingface.co/OpenGVLab/InternVL/raw/main/linear_intern_vit_6b_504_5k_ade20k_bs16_lr4e-5_1of16.log)       |
+| few-shot (1/8)  | InternViT-6B-224px          | Linear  | 50.0 | [config](./configs/intern_vit_6b/few_shot/linear_intern_vit_6b_504_10k_ade20k_bs16_lr4e-5_1of8.py)         | [ckpt](https://huggingface.co/OpenGVLab/InternVL/resolve/main/linear_intern_vit_6b_504_10k_ade20k_bs16_lr4e-5_1of8.pth) \| [log](https://huggingface.co/OpenGVLab/InternVL/raw/main/linear_intern_vit_6b_504_10k_ade20k_bs16_lr4e-5_1of8.log)       |
+| few-shot (1/4)  | InternViT-6B-224px          | Linear  | 53.3 | [config](./configs/intern_vit_6b/few_shot/linear_intern_vit_6b_504_20k_ade20k_bs16_lr4e-5_1of4.py)         | [ckpt](https://huggingface.co/OpenGVLab/InternVL/resolve/main/linear_intern_vit_6b_504_20k_ade20k_bs16_lr4e-5_1of4.pth) \| [log](https://huggingface.co/OpenGVLab/InternVL/raw/main/linear_intern_vit_6b_504_20k_ade20k_bs16_lr4e-5_1of4.log)       |
+| few-shot (1/2)  | InternViT-6B-224px          | Linear  | 55.8 | [config](./configs/intern_vit_6b/few_shot/linear_intern_vit_6b_504_40k_ade20k_bs16_lr4e-5_1of2.py)         | [ckpt](https://huggingface.co/OpenGVLab/InternVL/resolve/main/linear_intern_vit_6b_504_40k_ade20k_bs16_lr4e-5_1of2.pth) \| [log](https://huggingface.co/OpenGVLab/InternVL/raw/main/linear_intern_vit_6b_504_40k_ade20k_bs16_lr4e-5_1of2.log)       |
+| few-shot (1/1)  | InternViT-6B-224px          | Linear  | 57.2 | [config](./configs/intern_vit_6b/few_shot/linear_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_1of1.py)         | [ckpt](https://huggingface.co/OpenGVLab/InternVL/resolve/main/linear_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_1of1.pth) \| [log](https://huggingface.co/OpenGVLab/InternVL/raw/main/linear_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_1of1.log)       |
+| linear probing  | InternViT-6B-224px (frozen) | Linear  | 47.2 | [config](./configs/intern_vit_6b/linear_probing/linear_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_frozen.py) | [ckpt](https://huggingface.co/OpenGVLab/InternVL/resolve/main/linear_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_frozen.pth) \| [log](https://huggingface.co/OpenGVLab/InternVL/raw/main/linear_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_frozen.log)   |
+| head tuning     | InternViT-6B-224px (frozen) | UperNet | 54.9 | [config](./configs/intern_vit_6b/head_tuning/upernet_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_frozen.py)   | [ckpt](https://huggingface.co/OpenGVLab/InternVL/resolve/main/upernet_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_frozen.pth) \| [log](https://huggingface.co/OpenGVLab/InternVL/raw/main/upernet_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_frozen.log) |
+| full tuning     | InternViT-6B-224px          | UperNet | 58.9 | [config](./configs/intern_vit_6b/full_tuning/upernet_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5.py)          | [ckpt](https://huggingface.co/OpenGVLab/InternVL/resolve/main/upernet_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5.pth) \| [log](https://huggingface.co/OpenGVLab/InternVL/raw/main/upernet_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5.log)               |
+| adapter tuning  | InternViT-6B-224px-Adapter  | UperNet | 58.1 | [config](./configs/intern_vit_6b/vit_adapter/upernet_intern_vit_adapter_6b_512_80k_ade20k_bs16_lr4e-5.py)  | ckpt \| [log](https://huggingface.co/OpenGVLab/InternVL/raw/main/upernet_intern_vit_adapter_6b_512_80k_ade20k_bs16_lr4e-5.log)                                                                                                                      |
 
 You can download checkpoints from [here](https://huggingface.co/OpenGVLab/InternVL/tree/main) or from the table above. Then place them to `checkpoints/`.
 
-For example, to evaluate the `InternViT-6B` with a single GPU:
+For example, to evaluate the `InternViT-6B-224px` with a single GPU:
 
 ```bash
 python tools/test.py configs/intern_vit_6b/linear_probing/linear_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_frozen.py checkpoints/linear_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_frozen.pth --eval mIoU
 ```
 
-For example, to evaluate the `InternViT-6B` with a single node with 8 GPUs:
+For example, to evaluate the `InternViT-6B-224px` with a single node with 8 GPUs:
 
 ```bash
 sh tools/dist_test.sh configs/intern_vit_6b/linear_probing/linear_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_frozen.py checkpoints/linear_intern_vit_6b_504_80k_ade20k_bs16_lr4e-5_frozen.pth 8 --eval mIoU
@@ -77,7 +90,7 @@ sh tools/dist_test.sh configs/intern_vit_6b/linear_probing/linear_intern_vit_6b_
 
 <div align="center">
   <img src="resources/mmseg-logo.png" width="600"/>
-  <div>&nbsp;</div>
+  <div> </div>
   <div align="center">
     <b><font size="5">OpenMMLab website</font></b>
     <sup>
@@ -85,7 +98,7 @@ sh tools/dist_test.sh configs/intern_vit_6b/linear_probing/linear_intern_vit_6b_
         <i><font size="4">HOT</font></i>
       </a>
     </sup>
-    &nbsp;&nbsp;&nbsp;&nbsp;
+        
     <b><font size="5">OpenMMLab platform</font></b>
     <sup>
       <a href="https://platform.openmmlab.com">
@@ -93,7 +106,7 @@ sh tools/dist_test.sh configs/intern_vit_6b/linear_probing/linear_intern_vit_6b_
       </a>
     </sup>
   </div>
-  <div>&nbsp;</div>
+  <div> </div>
 
 <br />
 
@@ -133,19 +146,19 @@ The master branch works with **PyTorch 1.5+**.
 <summary>Major features</summary>
 
 - **Unified Benchmark**
-
+  
   We provide a unified benchmark toolbox for various semantic segmentation methods.
 
 - **Modular Design**
-
+  
   We decompose the semantic segmentation framework into different components and one can easily construct a customized semantic segmentation framework by combining different modules.
 
 - **Support of multiple methods out of box**
-
+  
   The toolbox directly supports popular and contemporary semantic segmentation frameworks, *e.g.* PSPNet, DeepLabV3, PSANet, DeepLabV3+, etc.
 
 - **High efficiency**
-
+  
   The training speed is faster than or comparable to other codebases.
 
 </details>
