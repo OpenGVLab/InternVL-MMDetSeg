@@ -10,13 +10,13 @@ Prepare the ADE20K dataset according to the [guidelines](https://github.com/open
 
 ## 📦 Model Preparation
 
-| model name              | type    | download                                                                                       | size  |
-| ----------------------- | ------- | ---------------------------------------------------------------------------------------------- |:-----:|
-| InternViT-6B-224px      | pytorch | 🤗 [HF link](https://huggingface.co/OpenGVLab/InternVL/blob/main/intern_vit_6b_224px.pth)      | 12 GB |
-| InternViT-6B-448px-V1-0 | pytorch | 🤗 [HF link](https://huggingface.co/OpenGVLab/InternVL/blob/main/intern_vit_6b_448px_v1_0.pth) | 12 GB |
-| InternViT-6B-448px-V1-2 | pytorch | 🤗 [HF link](https://huggingface.co/OpenGVLab/InternVL/blob/main/intern_vit_6b_448px_v1_2.pth) | 11 GB |
-| InternViT-6B-448px-V1-5 | pytorch | 🤗 [HF link](https://huggingface.co/OpenGVLab/InternVL/blob/main/intern_vit_6b_448px_v1_5.pth) | 11 GB |
-| InternViT-6B-448px-V2-5 | pytorch | 🤗 [HF link](https://huggingface.co/OpenGVLab/InternVL/blob/main/intern_vit_6b_448px_v2_5.pth) | 11 GB |
+| model name              | date       | type    | download                                                                                       | size  |
+| ----------------------- | ---------- | ------- | ---------------------------------------------------------------------------------------------- |:-----:|
+| InternViT-6B-224px      | 2023.12.22 | pytorch | 🤗 [HF link](https://huggingface.co/OpenGVLab/InternVL/blob/main/intern_vit_6b_224px.pth)      | 12 GB |
+| InternViT-6B-448px-V1-0 | 2024.01.30 | pytorch | 🤗 [HF link](https://huggingface.co/OpenGVLab/InternVL/blob/main/intern_vit_6b_448px_v1_0.pth) | 12 GB |
+| InternViT-6B-448px-V1-2 | 2024.02.11 | pytorch | 🤗 [HF link](https://huggingface.co/OpenGVLab/InternVL/blob/main/intern_vit_6b_448px_v1_2.pth) | 11 GB |
+| InternViT-6B-448px-V1-5 | 2024.04.20 | pytorch | 🤗 [HF link](https://huggingface.co/OpenGVLab/InternVL/blob/main/intern_vit_6b_448px_v1_5.pth) | 11 GB |
+| InternViT-6B-448px-V2-5 | 2024.10.24 | pytorch | 🤗 [HF link](https://huggingface.co/OpenGVLab/InternVL/blob/main/intern_vit_6b_448px_v2_5.pth) | 11 GB |
 
 Please download the above model weight and place it in the `pretrained/` folder.
 
