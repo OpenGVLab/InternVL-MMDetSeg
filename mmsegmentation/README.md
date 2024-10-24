@@ -90,7 +90,7 @@ sh tools/dist_test.sh configs/intern_vit_6b/linear_probing/linear_intern_vit_6b_
 
 <div align="center">
   <img src="resources/mmseg-logo.png" width="600"/>
-  <div> </div>
+  <div>&nbsp;</div>
   <div align="center">
     <b><font size="5">OpenMMLab website</font></b>
     <sup>
@@ -98,7 +98,7 @@ sh tools/dist_test.sh configs/intern_vit_6b/linear_probing/linear_intern_vit_6b_
         <i><font size="4">HOT</font></i>
       </a>
     </sup>
-        
+    &nbsp;&nbsp;&nbsp;&nbsp;
     <b><font size="5">OpenMMLab platform</font></b>
     <sup>
       <a href="https://platform.openmmlab.com">
@@ -106,7 +106,7 @@ sh tools/dist_test.sh configs/intern_vit_6b/linear_probing/linear_intern_vit_6b_
       </a>
     </sup>
   </div>
-  <div> </div>
+  <div>&nbsp;</div>
 
 <br />
 
