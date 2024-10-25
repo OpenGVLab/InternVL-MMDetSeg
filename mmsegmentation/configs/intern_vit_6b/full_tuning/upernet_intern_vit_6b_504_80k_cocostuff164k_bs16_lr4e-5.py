@@ -6,7 +6,7 @@
 
 _base_ = [
     '../../_base_/models/upernet_r50.py',
-    '../../_base_/datasets/ade20k_504x504.py',
+    '../../_base_/datasets/coco-stuff164k_504x504.py',
     '../../_base_/default_runtime.py',
     '../../_base_/schedules/schedule_80k.py'
 ]
@@ -26,28 +26,27 @@ model = dict(
         num_heads=25,
         mlp_ratio=4.,
         qkv_bias=False,
-        drop_path_rate=0.0,
+        drop_path_rate=0.4,
         init_values=0.1,
         with_cp=True,
         use_flash_attn=True,
         qk_normalization=True,
         layerscale_force_fp32=False,
         with_fpn=True,
-        freeze_vit=True,
+        freeze_vit=False,
         out_indices=[11, 23, 35, 47],
         pretrained=pretrained),
-    decode_head=dict(num_classes=150,
+    decode_head=dict(num_classes=171,
                      channels=1536,
                      in_channels=[3200, 3200, 3200, 3200]),
-    auxiliary_head=dict(num_classes=150,
+    auxiliary_head=dict(num_classes=171,
                         channels=1536,
-                        in_index=1,
                         in_channels=3200),
     test_cfg=dict(mode='slide', crop_size=(504, 504), stride=(322, 322))
 )
 optimizer = dict(_delete_=True, type='AdamW', lr=4e-5, betas=(0.9, 0.999), weight_decay=0.05,
                  constructor='CustomLayerDecayOptimizerConstructor',
-                 paramwise_cfg=dict(num_layers=48, layer_decay_rate=1.0))
+                 paramwise_cfg=dict(num_layers=48, layer_decay_rate=0.95))
 lr_config = dict(_delete_=True, policy='poly',
                  warmup='linear',
                  warmup_iters=1500,

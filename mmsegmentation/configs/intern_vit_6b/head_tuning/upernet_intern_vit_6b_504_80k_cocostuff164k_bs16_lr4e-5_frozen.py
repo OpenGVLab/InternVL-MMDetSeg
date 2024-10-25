@@ -6,7 +6,7 @@
 
 _base_ = [
     '../../_base_/models/upernet_r50.py',
-    '../../_base_/datasets/ade20k_504x504.py',
+    '../../_base_/datasets/coco-stuff164k_504x504.py',
     '../../_base_/default_runtime.py',
     '../../_base_/schedules/schedule_80k.py'
 ]
@@ -36,10 +36,10 @@ model = dict(
         freeze_vit=True,
         out_indices=[11, 23, 35, 47],
         pretrained=pretrained),
-    decode_head=dict(num_classes=150,
+    decode_head=dict(num_classes=171,
                      channels=1536,
                      in_channels=[3200, 3200, 3200, 3200]),
-    auxiliary_head=dict(num_classes=150,
+    auxiliary_head=dict(num_classes=171,
                         channels=1536,
                         in_index=1,
                         in_channels=3200),

@@ -5,12 +5,12 @@
 # --------------------------------------------------------
 
 _base_ = [
-    '../../_base_/models/upernet_r50.py',
-    '../../_base_/datasets/ade20k_504x504.py',
+    '../../_base_/models/segmenter_vit-b16_mask.py',
+    '../../_base_/datasets/coco-stuff164k_504x504.py',
     '../../_base_/default_runtime.py',
     '../../_base_/schedules/schedule_80k.py'
 ]
-deepspeed = True
+deepspeed = False
 deepspeed_config = 'zero_configs/adam_zero1_bf16.json'
 pretrained = './pretrained/intern_vit_6b_224px.pth'
 model = dict(
@@ -32,20 +32,24 @@ model = dict(
         use_flash_attn=True,
         qk_normalization=True,
         layerscale_force_fp32=False,
-        with_fpn=True,
         freeze_vit=True,
-        out_indices=[11, 23, 35, 47],
+        out_indices=[44],
         pretrained=pretrained),
-    decode_head=dict(num_classes=150,
-                     channels=1536,
-                     in_channels=[3200, 3200, 3200, 3200]),
-    auxiliary_head=dict(num_classes=150,
-                        channels=1536,
-                        in_index=1,
-                        in_channels=3200),
+    decode_head=dict(
+        _delete_=True,
+        type='FCNHead',
+        in_channels=3200,
+        channels=3200,
+        num_convs=0,
+        dropout_ratio=0.0,
+        concat_input=False,
+        num_classes=171,
+        with_norm=True,
+        loss_decode=dict(
+            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
     test_cfg=dict(mode='slide', crop_size=(504, 504), stride=(322, 322))
 )
-optimizer = dict(_delete_=True, type='AdamW', lr=4e-5, betas=(0.9, 0.999), weight_decay=0.05,
+optimizer = dict(_delete_=True, type='AdamW', lr=4e-5, betas=(0.9, 0.999), weight_decay=0.0,
                  constructor='CustomLayerDecayOptimizerConstructor',
                  paramwise_cfg=dict(num_layers=48, layer_decay_rate=1.0))
 lr_config = dict(_delete_=True, policy='poly',
