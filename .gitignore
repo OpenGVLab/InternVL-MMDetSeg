@@ -197,7 +197,7 @@ cython_debug/
 # Model checkpoints and weights
 checkpoints/
 weights/
-models/
+# models/  # 注释掉，避免忽略项目中的 models 目录
 pretrained/
 work_dirs/
 *.safetensors
@@ -219,7 +219,7 @@ mlruns/
 
 # Data files
 data/
-datasets/
+# datasets/  # 注释掉，避免忽略项目中的 datasets 目录
 images/
 videos/
 audio/
