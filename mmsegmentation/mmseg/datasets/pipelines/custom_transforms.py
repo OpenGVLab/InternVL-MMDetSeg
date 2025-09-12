@@ -188,9 +188,14 @@ class DNANetTransforms(object):
 
     def _sync_transform(self, img, mask):
 
-        # 假设 img 是 (H, W, 3)，mask 是 (H, W)
+        # 假设 img 是 (H, W, 3)，mask 可能是 (H, W) 或 (H, W, 3)
         img = img.astype(np.uint8)
         mask = mask.astype(np.uint8)
+        
+        # 如果mask是多通道，转换为单通道
+        if len(mask.shape) == 3:
+            mask = mask[:, :, 0]  # 取第一个通道
+        
         # background 0, target 255 -> 1
         # mask[mask == 255] = 1
         img = Image.fromarray(img)
@@ -229,13 +234,18 @@ class DNANetTransforms(object):
         if random.random() < 0.5:
             img = img.filter(ImageFilter.GaussianBlur(radius=random.random()))
 
-        img, mask = np.array(img), np.array(mask)
+        img, mask = np.array(img), np.array(mask, dtype=np.float32)
 
         return img, mask
 
     def _testval_sync_transform(self, img, mask):
 
-        # 假设 img 是 (H, W, 3)，mask 是 (H, W)
+        # 假设 img 是 (H, W, 3)，mask 可能是 (H, W) 或 (H, W, 3) 或 (H, W, 4)
+        
+        # 如果mask是多通道，转换为单通道
+        if len(mask.shape) == 3:
+            mask = mask[:, :, 0]  # 取第一个通道
+            
         img = Image.fromarray(img)
         mask = Image.fromarray(mask)
 

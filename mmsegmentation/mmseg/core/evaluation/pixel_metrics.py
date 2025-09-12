@@ -269,8 +269,20 @@ def eval_pixel_metrics(
     # print(f"\n metric_objs.keys()={metric_objs.keys()}")
     for pred, label in zip(results, gt_seg_maps):
         # pred.shape = [1 H W] label.shape = [H, W]
+        # print(f"Debug - pred.shape: {pred.shape}, label.shape: {label.shape}")
         pred = pred.reshape(pred.shape[-2], pred.shape[-1])
-        assert pred.shape == label.shape, "Predict and Label Shape Don't Match"
+        
+        # Fix label shape if it has extra dimensions
+        if len(label.shape) == 3:
+            if label.shape[-1] in [3, 4]:
+                # If label is multi-channel (H, W, C), take first channel
+                label = label[:, :, 0]
+            elif label.shape[0] == 1:
+                # If label is (1, H, W), squeeze first dimension
+                label = label.squeeze(0)
+        
+        # print(f"Debug - after reshape - pred.shape: {pred.shape}, label.shape: {label.shape}")
+        assert pred.shape == label.shape, f"Predict and Label Shape Don't Match: pred={pred.shape}, label={label.shape}"
         for key, metric_obj in metric_objs.items():  # 统一 update
             # metric.update() needs pred.shape = label.shape = [1, 1, H, W]
             metric_obj.update(pred, label)
