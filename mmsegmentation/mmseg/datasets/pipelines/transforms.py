@@ -930,6 +930,315 @@ class CLAHE(object):
 
 
 @PIPELINES.register_module()
+class CenterPad(object):
+    """Pad the image & mask using center padding strategy.
+
+    This class pads images and masks using center padding (uniform distribution
+    on top/bottom and left/right), similar to the pad_if_needed method in 
+    RandomPadCrop class.
+
+    Args:
+        size (tuple, optional): Fixed padding size (height, width).
+        size_divisor (int, optional): The divisor of padded size.
+        pad_val (float, optional): Padding value for images. Default: 0.
+        seg_pad_val (float, optional): Padding value for segmentation maps.
+            Default: 255.
+    """
+    
+    def __init__(self,
+                 size=None,
+                 size_divisor=None,
+                 pad_val=0,
+                 seg_pad_val=255):
+        self.size = size
+        self.size_divisor = size_divisor
+        self.pad_val = pad_val
+        self.seg_pad_val = seg_pad_val
+        # only one of size and size_divisor should be valid
+        assert size is not None or size_divisor is not None
+        assert size is None or size_divisor is None
+    
+    def _center_pad(self, img, target_shape, is_seg=False):
+        """Pad image or segmentation map using center padding strategy."""
+        img_h, img_w = img.shape[:2]
+        target_h, target_w = target_shape[:2]
+        
+        # 计算需要填充的量
+        pad_h = max(target_h - img_h, 0)
+        pad_w = max(target_w - img_w, 0)
+        
+        if pad_h > 0 or pad_w > 0:
+            # 对于图像，填充值使用pad_val；对于分割图，使用seg_pad_val
+            pad_val = self.seg_pad_val if is_seg else self.pad_val
+            
+            # 计算上下左右的填充量（均匀填充）
+            pad_top = pad_h // 2
+            pad_bottom = pad_h - pad_top
+            pad_left = pad_w // 2
+            pad_right = pad_w - pad_left
+            
+            # 根据图像维度确定填充方式
+            if img.ndim == 3:  # 彩色图像 (H, W, C)
+                padding = ((pad_top, pad_bottom), (pad_left, pad_right), (0, 0))
+            else:  # 分割图或灰度图 (H, W)
+                padding = ((pad_top, pad_bottom), (pad_left, pad_right))
+            
+            # 执行填充
+            img = np.pad(img, padding, mode='constant', constant_values=pad_val)
+        
+        return img
+    
+    def _pad_img(self, results):
+        """Pad images according to target size."""
+        if self.size is not None:
+            target_shape = self.size
+        elif self.size_divisor is not None:
+            # Calculate target shape based on size_divisor
+            img_h, img_w = results['img'].shape[:2]
+            target_h = ((img_h - 1) // self.size_divisor + 1) * self.size_divisor
+            target_w = ((img_w - 1) // self.size_divisor + 1) * self.size_divisor
+            target_shape = (target_h, target_w)
+        
+        # 计算填充偏移量
+        img_h, img_w = results['img'].shape[:2]
+        target_h, target_w = target_shape[:2]
+        pad_h = max(target_h - img_h, 0)
+        pad_w = max(target_w - img_w, 0)
+        pad_top = pad_h // 2
+        pad_left = pad_w // 2
+        
+        padded_img = self._center_pad(results['img'], target_shape, is_seg=False)
+        results['img'] = padded_img
+        results['img_shape'] = padded_img.shape
+        results['pad_shape'] = padded_img.shape
+        results['pad_fixed_size'] = self.size
+        results['pad_size_divisor'] = self.size_divisor
+        
+        # 记录中心填充的偏移量，用于坐标映射
+        results['center_pad_offset'] = (pad_top, pad_left)
+    
+    def _pad_seg(self, results):
+        """Pad masks according to ``results['pad_shape']``."""
+        for key in results.get('seg_fields', []):
+            results[key] = self._center_pad(
+                results[key], results['pad_shape'][:2], is_seg=True)
+    
+    def __call__(self, results):
+        """Call function to pad images, masks, semantic segmentation maps.
+
+        Args:
+            results (dict): Result dict from loading pipeline.
+
+        Returns:
+            dict: Updated result dict.
+        """
+        self._pad_img(results)
+        self._pad_seg(results)
+        return results
+    
+    def __repr__(self):
+        repr_str = self.__class__.__name__
+        repr_str += f'(size={self.size}, size_divisor={self.size_divisor}, ' \
+                    f'pad_val={self.pad_val}, seg_pad_val={self.seg_pad_val})'
+        return repr_str
+
+
+
+
+@PIPELINES.register_module()
+class RandomPadCrop(object):
+    """Random crop the image & seg, with padding for small images.
+
+    Args:
+        crop_size (tuple): Expected size after cropping, (h, w).
+        cat_max_ratio (float): The maximum ratio that single category could
+            occupy.
+        pad_val (int, tuple): Value to pad for images. Default: 0.
+        seg_pad_val (int, tuple): Value to pad for segmentation maps. 
+            Default: 255 (usually the ignore index).
+    """
+    
+    def __init__(self, crop_size, cat_max_ratio=1., ignore_index=255,
+                 pad_val=0, seg_pad_val=0):
+        assert crop_size[0] > 0 and crop_size[1] > 0
+        self.crop_size = crop_size
+        self.cat_max_ratio = cat_max_ratio
+        self.ignore_index = ignore_index
+        self.pad_val = pad_val
+        self.seg_pad_val = seg_pad_val
+    
+    def pad_if_needed(self, img, is_seg=False):
+        """Pad the image if its size is smaller than crop_size."""
+        img_h, img_w = img.shape[:2]
+        crop_h, crop_w = self.crop_size
+        
+        # 计算需要填充的量
+        pad_h = max(crop_h - img_h, 0)
+        pad_w = max(crop_w - img_w, 0)
+        
+        if pad_h > 0 or pad_w > 0:
+            # 对于图像，填充值使用pad_val；对于分割图，使用seg_pad_val
+            pad_val = self.seg_pad_val if is_seg else self.pad_val
+            
+            # 计算上下左右的填充量（均匀填充）
+            pad_top = pad_h // 2
+            pad_bottom = pad_h - pad_top
+            pad_left = pad_w // 2
+            pad_right = pad_w - pad_left
+            
+            # 根据图像维度确定填充方式
+            if img.ndim == 3:  # 彩色图像 (H, W, C)
+                padding = ((pad_top, pad_bottom), (pad_left, pad_right), (0, 0))
+            else:  # 分割图或灰度图 (H, W)
+                padding = ((pad_top, pad_bottom), (pad_left, pad_right))
+            
+            # 执行填充
+            img = np.pad(img, padding, mode='constant', constant_values=pad_val)
+        
+        return img
+    
+    def get_crop_bbox(self, img):
+        """Randomly get a crop bounding box."""
+        # 确保图像尺寸不小于裁剪尺寸
+        img = self.pad_if_needed(img)
+        
+        margin_h = max(img.shape[0] - self.crop_size[0], 0)
+        margin_w = max(img.shape[1] - self.crop_size[1], 0)
+        offset_h = np.random.randint(0, margin_h + 1)
+        offset_w = np.random.randint(0, margin_w + 1)
+        crop_y1, crop_y2 = offset_h, offset_h + self.crop_size[0]
+        crop_x1, crop_x2 = offset_w, offset_w + self.crop_size[1]
+        
+        return crop_y1, crop_y2, crop_x1, crop_x2
+    
+    def crop(self, img, crop_bbox):
+        """Crop from ``img``"""
+        crop_y1, crop_y2, crop_x1, crop_x2 = crop_bbox
+        img = img[crop_y1:crop_y2, crop_x1:crop_x2, ...]
+        return img
+    
+    def __call__(self, results):
+        """Call function to randomly crop images, semantic segmentation maps.
+
+        Args:
+            results (dict): Result dict from loading pipeline.
+
+        Returns:
+            dict: Randomly cropped results, 'img_shape' key in result dict is
+                updated according to crop size.
+        """
+        
+        # 先对图像进行必要的填充
+        img = self.pad_if_needed(results['img'])
+        results['img'] = img
+        
+        # 处理mask：多通道转单通道，255转1
+        mask = results['gt_semantic_seg']
+        if len(mask.shape) == 3:
+            mask = mask[:, :, 0]  # 取第一个通道
+        
+        mask[mask > 1] = 1
+        results["gt_semantic_seg"] = mask
+        
+        
+        # 对分割图也进行填充
+        for key in results.get('seg_fields', []):
+            results[key] = self.pad_if_needed(results[key], is_seg=True)
+        
+        # 获取裁剪框
+        crop_bbox = self.get_crop_bbox(img)
+        
+        # 检查类别占比（如果需要）
+        if self.cat_max_ratio < 1.:
+            # 最多尝试10次
+            for _ in range(10):
+                seg_temp = self.crop(results['gt_semantic_seg'], crop_bbox)
+                labels, cnt = np.unique(seg_temp, return_counts=True)
+                cnt = cnt[labels != self.ignore_index]
+                if len(cnt) > 1 and np.max(cnt) / np.sum(cnt) < self.cat_max_ratio:
+                    break
+                crop_bbox = self.get_crop_bbox(img)
+        
+        # 裁剪图像并更新结果
+        img = self.crop(img, crop_bbox)
+        img_shape = img.shape
+        
+        img, mask = np.array(img), np.array(mask, dtype=np.float32)
+
+        results['img'] = img
+        results['img_shape'] = img_shape
+        
+        # 裁剪所有语义分割相关的字段
+        for key in results.get('seg_fields', []):
+            results[key] = self.crop(results[key], crop_bbox)
+        
+        return results
+    
+    # def find_closest_aspect_ratio(self.aspect_ratio, target_ratios, width, height, image_size):
+    #     best_ratio_diff = float('inf')
+    #     best_ratio = (1, 1)
+    #     area = width * height
+    #     for ratio in target_ratios:
+    #         target_aspect_ratio = ratio[0] / ratio[1]
+    #         ratio_diff = abs(aspect_ratio - target_aspect_ratio)
+    #         if ratio_diff < best_ratio_diff:
+    #             best_ratio_diff = ratio_diff
+    #             best_ratio = ratio
+    #         elif ratio_diff == best_ratio_diff:
+    #             if area > 0.5 * image_size * image_size * ratio[0] * ratio[1]:
+    #                 best_ratio = ratio
+    #     # print(f'width: {width}, heigh
+    # t: {height}, best_ratio: {best_ratio}')
+    #     return best_ratio
+
+    
+    # def dynamic_preprocess(self, image, min_num=1, max_num=6, image_size=448, use_thumbnail=False):
+    #     orig_width, orig_height = image.size
+    #     aspect_ratio = orig_width / orig_height
+
+    #     # calculate the existing image aspect ratio
+    #     target_ratios = set(
+    #         (i, j) for n in range(min_num, max_num + 1) for i in range(1, n + 1) for j in range(1, n + 1) if
+    #         i * j <= max_num and i * j >= min_num)
+    #     target_ratios = sorted(target_ratios, key=lambda x: x[0] * x[1])
+
+    #     # find the closest aspect ratio to the target
+    #     target_aspect_ratio = self.find_closest_aspect_ratio(
+    #         aspect_ratio, target_ratios, orig_width, orig_height, image_size)
+
+    #     # calculate the target width and height
+    #     target_width = image_size * target_aspect_ratio[0]
+    #     target_height = image_size * target_aspect_ratio[1]
+    #     blocks = target_aspect_ratio[0] * target_aspect_ratio[1]
+
+    #     # resize the image
+    #     resized_img = image.resize((target_width, target_height))
+    #     processed_images = []
+    #     for i in range(blocks):
+    #         box = (
+    #             (i % (target_width // image_size)) * image_size,
+    #             (i // (target_width // image_size)) * image_size,
+    #             ((i % (target_width // image_size)) + 1) * image_size,
+    #             ((i // (target_width // image_size)) + 1) * image_size
+    #         )
+    #         # split the image
+    #         split_img = resized_img.crop(box)
+    #         processed_images.append(split_img)
+    #     assert len(processed_images) == blocks
+    #     if use_thumbnail and len(processed_images) != 1:
+    #         thumbnail_img = image.resize((image_size, image_size))
+    #         processed_images.append(thumbnail_img)
+    #     return processed_images
+    
+    def __repr__(self):
+        return (f'{self.__class__.__name__}(crop_size={self.crop_size}, '
+                f'cat_max_ratio={self.cat_max_ratio}, '
+                f'ignore_index={self.ignore_index}, '
+                f'pad_val={self.pad_val}, '
+                f'seg_pad_val={self.seg_pad_val})')
+
+
+@PIPELINES.register_module()
 class RandomCrop(object):
     """Random crop the image & seg.
 

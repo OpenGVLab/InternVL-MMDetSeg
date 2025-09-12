@@ -201,14 +201,21 @@ class EncoderDecoder(BaseSegmentor):
         preds = preds / count_mat
         if rescale:
             # remove padding area
-            resize_shape = img_meta[0]['img_shape'][:2]
-            preds = preds[:, :, :resize_shape[0], :resize_shape[1]]
-            preds = resize(
-                preds,
-                size=img_meta[0]['ori_shape'][:2],
-                mode='bilinear',
-                align_corners=self.align_corners,
-                warning=False)
+            if 'center_pad_offset' in img_meta[0]:
+                # 处理中心填充的情况
+                pad_top, pad_left = img_meta[0]['center_pad_offset']
+                ori_h, ori_w = img_meta[0]['ori_shape'][:2]
+                preds = preds[:, :, pad_top:pad_top+ori_h, pad_left:pad_left+ori_w]
+            else:
+                # 处理普通填充的情况（右下角填充）
+                resize_shape = img_meta[0]['img_shape'][:2]
+                preds = preds[:, :, :resize_shape[0], :resize_shape[1]]
+                preds = resize(
+                    preds,
+                    size=img_meta[0]['ori_shape'][:2],
+                    mode='bilinear',
+                    align_corners=self.align_corners,
+                    warning=False)
         return preds
 
     def whole_inference(self, img, img_meta, rescale):
@@ -221,9 +228,17 @@ class EncoderDecoder(BaseSegmentor):
                 size = img.shape[2:]
             else:
                 # remove padding area
-                resize_shape = img_meta[0]['img_shape'][:2]
-                seg_logit = seg_logit[:, :, :resize_shape[0], :resize_shape[1]]
-                size = img_meta[0]['ori_shape'][:2]
+                if 'center_pad_offset' in img_meta[0]:
+                    # 处理中心填充的情况
+                    pad_top, pad_left = img_meta[0]['center_pad_offset']
+                    ori_h, ori_w = img_meta[0]['ori_shape'][:2]
+                    seg_logit = seg_logit[:, :, pad_top:pad_top+ori_h, pad_left:pad_left+ori_w]
+                    size = img_meta[0]['ori_shape'][:2]
+                else:
+                    # 处理普通填充的情况（右下角填充）
+                    resize_shape = img_meta[0]['img_shape'][:2]
+                    seg_logit = seg_logit[:, :, :resize_shape[0], :resize_shape[1]]
+                    size = img_meta[0]['ori_shape'][:2]
             seg_logit = resize(
                 seg_logit,
                 size=size,

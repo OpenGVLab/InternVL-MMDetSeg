@@ -28,8 +28,8 @@ val_pipeline = [
         transforms=[
             # 完全保持原尺寸，只做padding - 模拟evaluate.py的行为
             dict(
-                type="Pad",
-                size_divisor=32,  # padding到32的倍数
+                type="CenterPad",
+                size_divisor=448,  # padding到448的倍数，匹配模型的crop_size
                 pad_val=0,
                 seg_pad_val=0
             ),
@@ -38,7 +38,9 @@ val_pipeline = [
             #      mean=[0.2517], std=[0.0961],  
             #      to_rgb=False),
             dict(type="ImageToTensor", keys=["img"]),
-            dict(type="Collect", keys=["img"]),
+            dict(type="Collect", keys=["img"], meta_keys=('filename', 'ori_filename', 'ori_shape',
+                            'img_shape', 'pad_shape', 'scale_factor', 'flip',
+                            'flip_direction', 'img_norm_cfg', 'center_pad_offset')),
         ],
     ),
     # dict(

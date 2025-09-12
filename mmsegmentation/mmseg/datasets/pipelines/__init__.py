@@ -5,7 +5,7 @@ from .formatting import (Collect, ImageToTensor, ToDataContainer, ToTensor,
 from .loading import LoadAnnotations, LoadImageFromFile,LoadDataFromFile
 from .test_time_aug import MultiScaleFlipAug
 from .transforms import (CLAHE, AdjustGamma, Normalize, Pad,
-                         PhotoMetricDistortion, RandomCrop, RandomCutOut,
+                         PhotoMetricDistortion, RandomCrop, RandomCutOut, RandomPadCrop, CenterPad,
                          RandomFlip, RandomMosaic, RandomRotate, Rerange,
                          Resize, RGB2Gray, SegRescale)
 from .formatting import ToMask
@@ -23,5 +23,6 @@ __all__ = [
     'MultiScaleFlipAug', 'Resize', 'RandomFlip', 'Pad', 'RandomCrop',
     'Normalize', 'SegRescale', 'PhotoMetricDistortion', 'RandomRotate',
     'AdjustGamma', 'CLAHE', 'Rerange', 'RGB2Gray', 'RandomCutOut',
-    'RandomMosaic', 'ToMask', 'SETR_Resize', 'PadShortSide', 'MapillaryHack'
+    'RandomMosaic', 'ToMask', 'SETR_Resize', 'PadShortSide', 'MapillaryHack',
+    "RandomPadCrop", "CenterPad"
 ]
