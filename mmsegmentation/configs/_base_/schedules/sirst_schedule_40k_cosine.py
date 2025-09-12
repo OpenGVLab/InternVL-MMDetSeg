@@ -9,7 +9,7 @@ lr_config = dict(
     policy='CosineAnnealing',
     min_lr=1e-7,  # 最小学习率，避免完全归零
     warmup='linear',
-    warmup_iters=1000,  # warmup迭代数，约占总训练的2.5%
+    warmup_iters=2000,  # warmup迭代数，约占总训练的2.5%
     warmup_ratio=0.1,   # warmup时学习率比例
     by_epoch=False
 )# lr_config = dict(warmup='linear', warmup_iters=2000,
@@ -24,9 +24,9 @@ runner = dict(type="IterBasedRunner", max_iters=40000)
 checkpoint_config = dict(
     by_epoch=False,
     interval=interval,
-    max_keep_ckpts=3,
+    max_keep_ckpts=1,
     create_symlink=False,
-    save_optimizer=True,
+    save_optimizer=False,
 )
 #  metric = 'PdFa' -> ['Pd', 'Fa']
 #  metric = 'ROC'  -> ['TPR', 'FPR', 'Recall', "Precision"]

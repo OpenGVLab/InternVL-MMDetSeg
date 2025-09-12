@@ -5,19 +5,25 @@
 optimizer_config = dict()
 # learning policy
 lr_config = dict(policy="poly", power=0.9, min_lr=0, by_epoch=False)  # 0.7
-# lr_config = dict(warmup='linear', warmup_iters=2000,
-#                   warmup_by_epoch=False, policy='CosineAnnealing', min_lr=0, by_epoch=False)
+# lr_config = dict(
+#     policy='CosineAnnealing',
+#     min_lr=1e-7,  # 最小学习率，避免完全归零
+#     warmup='linear',
+#     warmup_iters=5000,  # warmup迭代数，约占总训练的2.5%
+#     by_epoch=True
+# )
 # runtime settings
+
 
 
 interval = 2000
 # interval = 100
-runner = dict(type="IterBasedRunner", max_iters=20000) #40000
+runner = dict(type="IterBasedRunner", max_iters=40000) #40000
 # todo 仅保留了后五个 checkpoint, 而不是最优的！
 checkpoint_config = dict(
     by_epoch=False,
     interval=interval,
-    max_keep_ckpts=3,
+    max_keep_ckpts=1,
     create_symlink=False,
     save_optimizer=True,
 )
@@ -28,10 +34,10 @@ checkpoint_config = dict(
 evaluation = dict(
     interval=interval,
     gpu_collect=False,
-    by_epoch=False,
+    by_epoch=True,
     metric=["PdFa", "ROC", "mIoU"],
     ROC_thr=10,
-    real_time=True,
+    real_time=False,
     show=False,
 )  # nan_to_num=0
 find_unused_parameters = True
