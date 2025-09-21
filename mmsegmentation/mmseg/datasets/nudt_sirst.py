@@ -5,6 +5,7 @@ import os
 import numpy as np
 from terminaltables import AsciiTable
 from torch.utils.data import Dataset
+import torch
 import scipy.io as sio
 import mmcv
 from mmcv.utils import print_log
@@ -103,17 +104,26 @@ class NUDTSIRSTDataset(Dataset):
         """
         img_names = self.load_img_names()
         # add suffix for img_names, e.g., 000001 -> 000001.png
-        img_names = [f'{idx + self.img_suffix}' for idx in img_names]
+        img_names_with_suffix = [f'{idx + self.img_suffix}' for idx in img_names]
+        
+        # 严格按照 train.txt 的顺序构建 img_infos
         img_infos = []
-        for img in mmcv.scandir(img_dir, img_suffix, recursive=True):
-            if img in img_names:
-                img_info = dict(filename=img)
+        # 先扫描所有文件，建立文件存在性检查的集合
+        existing_files = set(mmcv.scandir(img_dir, img_suffix, recursive=True))
+        
+        # 严格按照 train.txt 的顺序添加图片信息
+        for img_name in img_names_with_suffix:
+            if img_name in existing_files:
+                img_info = dict(filename=img_name)
                 if ann_dir is not None:
-                    seg_map = img.replace(img_suffix, seg_map_suffix)
+                    seg_map = img_name.replace(img_suffix, seg_map_suffix)
                     img_info["ann"] = dict(seg_map=seg_map)
                 img_infos.append(img_info)
+            else:
+                print_log(f"Warning: Image {img_name} listed in split file but not found in {img_dir}", 
+                         logger=get_root_logger())
 
-        print_log(f"Loaded {len(img_infos)} images", logger=get_root_logger())
+        print_log(f"Loaded {len(img_infos)} images in strict order from split file", logger=get_root_logger())
         return img_infos
 
     def load_img_names(self):
@@ -207,6 +217,24 @@ class NUDTSIRSTDataset(Dataset):
     def format_results(self, results, **kwargs):
         """Place holder to format result to dataset specific output."""
         pass
+
+    def pre_eval(self, preds, indices):
+        """Collect eval result from each iteration.
+        
+        Args:
+            preds (list[torch.Tensor]): Prediction results.
+            indices (list[int]): Indices of predictions.
+            
+        Returns:
+            list[torch.Tensor]: Collected predictions.
+        """
+        # Convert predictions to numpy arrays if they are tensors
+        collected_preds = []
+        for pred, idx in zip(preds, indices):
+            if isinstance(pred, torch.Tensor):
+                pred = pred.cpu().numpy()
+            collected_preds.append(pred)
+        return collected_preds
 
     def get_gt_seg_maps(self, idx=None):
         """Get ground truth segmentation maps for evaluation."""
@@ -388,7 +416,24 @@ class NUDTSIRSTDataset(Dataset):
         print_log(f"eval idx={idx}/{len(self)-1}", logger=get_root_logger())
         if idx < len(self) - 1:
             # 获取当前结果
-            Fa, Pd = self.metric_objs['PdFa'].get(idx + 1, gt_seg_maps[0].shape)
+            # Calculate shapes for variable sized images
+            shapes = [gt_seg_map.shape[:2] for gt_seg_map in gt_seg_maps]
+            
+            # Debug: Print shape information
+            print_log(f"DEBUG - idx={idx}, img_num={idx + 1}", logger=get_root_logger())
+            print_log(f"DEBUG - gt_seg_maps length: {len(gt_seg_maps)}", logger=get_root_logger())
+            print_log(f"DEBUG - Individual shapes: {[gt_seg_map.shape for gt_seg_map in gt_seg_maps]}", logger=get_root_logger())
+            print_log(f"DEBUG - Extracted shapes (H,W): {shapes}", logger=get_root_logger())
+            
+            # Check if all shapes are the same
+            if len(set(shapes)) == 1:
+                print_log(f"DEBUG - All images have same shape: {shapes[0]}", logger=get_root_logger())
+            else:
+                print_log(f"DEBUG - Images have different shapes: {len(set(shapes))} unique shapes", logger=get_root_logger())
+                print_log(f"DEBUG - Shape distribution: {dict((shape, shapes.count(shape)) for shape in set(shapes))}", logger=get_root_logger())
+            
+            # Use accumulated pixel counts instead of fixed shapes
+            Fa, Pd = self.metric_objs['PdFa'].get()
             # 长度为 ROC_thr+1 的 list
             ture_positive_rate, false_positive_rate, recall, precision = (
                 self.metric_objs['ROC'].get()
@@ -414,7 +459,24 @@ class NUDTSIRSTDataset(Dataset):
         else:
             # 统一取结果
             # 长度为 ROC_thr+1 的 list
-            Fa, Pd = self.metric_objs['PdFa'].get(len(self), gt_seg_maps[0].shape)
+            # Calculate shapes for variable sized images
+            shapes = [gt_seg_map.shape[:2] for gt_seg_map in gt_seg_maps]
+            
+            # Debug: Print final evaluation shape information
+            print_log(f"DEBUG - Final evaluation, total images: {len(self)}", logger=get_root_logger())
+            print_log(f"DEBUG - gt_seg_maps length: {len(gt_seg_maps)}", logger=get_root_logger())
+            print_log(f"DEBUG - Individual shapes: {[gt_seg_map.shape for gt_seg_map in gt_seg_maps]}", logger=get_root_logger())
+            print_log(f"DEBUG - Extracted shapes (H,W): {shapes}", logger=get_root_logger())
+            
+            # Check if all shapes are the same
+            if len(set(shapes)) == 1:
+                print_log(f"DEBUG - All images have same shape: {shapes[0]}", logger=get_root_logger())
+            else:
+                print_log(f"DEBUG - Images have different shapes: {len(set(shapes))} unique shapes", logger=get_root_logger())
+                print_log(f"DEBUG - Shape distribution: {dict((shape, shapes.count(shape)) for shape in set(shapes))}", logger=get_root_logger())
+            
+            # Use accumulated pixel counts instead of fixed shapes
+            Fa, Pd = self.metric_objs['PdFa'].get()
             # 长度为 ROC_thr+1 的 list
             ture_positive_rate, false_positive_rate, recall, precision = (
                 self.metric_objs['ROC'].get()

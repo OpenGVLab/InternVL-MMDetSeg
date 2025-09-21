@@ -134,6 +134,8 @@ class PD_FA:
         self.FA = np.zeros(self.bins + 1)
         self.PD = np.zeros(self.bins + 1)
         self.target = np.zeros(self.bins + 1)
+        # Accumulate total evaluated pixels to support variable image sizes
+        self.total_pixels = 0
 
     def update(self, preds, labels):
         for iBin in range(self.bins + 1):
@@ -151,6 +153,10 @@ class PD_FA:
             coord_label = measure.regionprops(label)
 
             self.target[iBin] += len(coord_label)
+            # Accumulate pixels for current image (supports variable sizes)
+            if iBin == 0:  # Only accumulate once per image, not per threshold
+                h, w = predits.shape
+                self.total_pixels += (h * w)
             self.image_area_total = []
             self.image_area_match = []
             self.distance_match = []
@@ -172,23 +178,55 @@ class PD_FA:
 
                         del coord_image[m]
                         break
-            # todo 这里不严谨！！！会导致虚警率变低！！！
-            self.dismatch = [
-                x for x in self.image_area_total if x not in self.image_area_match
-            ]
+                # todo 这里不严谨！！！会导致虚警率变低！！！
+                self.dismatch = [
+                    x for x in self.image_area_total if x not in self.image_area_match
+                ]
             self.FA[iBin] += np.sum(self.dismatch)
             self.PD[iBin] += len(self.distance_match)
 
-    def get(self, img_num, shape=(256, 256)):
-        H, W = shape
-        Final_FA = self.FA / ((H * W) * img_num)
-        Final_PD = self.PD / self.target
+    def get(self, img_num=None, shape=None):
+        """
+        Return FA and PD curves.
+
+        Backward-compatible signature, but variable image sizes are handled by
+        accumulated pixel counts from update(). If no accumulation is available
+        (e.g., legacy flow), fall back to provided img_num/shape if given.
+        """
+        # Preferred path: use accumulated total pixels
+        if self.total_pixels is not None and self.total_pixels > 0:
+            denom_pixels = np.full(self.bins + 1, self.total_pixels)
+        else:
+            # Fallback path for legacy callers
+            if shape is None:
+                # Avoid division by zero; treat denominator as 1 per bin
+                denom_pixels = np.ones(self.bins + 1)
+            else:
+                # Support list of shapes or a single shape tuple/array
+                if isinstance(shape, (list, tuple)) and len(shape) > 0 and isinstance(shape[0], (list, tuple, np.ndarray)):
+                    # shape is a list of shapes like [(H, W), ...]
+                    total = 0
+                    for s in shape:
+                        h, w = s[:2]
+                        total += int(h) * int(w)
+                    denom = total
+                else:
+                    # single shape provided
+                    h, w = shape[:2]
+                    count = 1 if img_num is None else int(img_num)
+                    denom = int(h) * int(w) * count
+                denom_pixels = np.full(self.bins + 1, max(denom, 1))
+
+        Final_FA = self.FA / np.maximum(denom_pixels, 1e-6)
+        Final_PD = self.PD / np.maximum(self.target, 1e-6)
 
         return Final_FA, Final_PD
 
     def reset(self):
         self.FA = np.zeros([self.bins + 1])
         self.PD = np.zeros([self.bins + 1])
+        self.target = np.zeros([self.bins + 1])
+        self.total_pixels = 0
 
 
 class mIoU:
@@ -301,7 +339,8 @@ def eval_pixel_metrics(
     
     # 长度为 ROC_thr+1 的 list
     if 'PdFa' in metric_objs:
-        Fa, Pd = metric_objs['PdFa'].get(len(gt_seg_maps), gt_seg_maps[0].shape)
+        # Use accumulated pixel counts; no need to pass counts or shape
+        Fa, Pd = metric_objs['PdFa'].get()
         ret_metrics.update({'FA': Fa, 'PD': Pd})
     
     # 长度为 ROC_thr+1 的 list
