@@ -294,7 +294,13 @@ class InternVisionEncoderLayer(nn.Module):
             x = x + self.drop_path1(self.attn(self.norm1(x), H, W)*self.ls1)
             x = x + self.drop_path2(self.mlp(self.norm2(x))*self.ls2)
             return x
-        if self.with_cp:
+        use_checkpoint = (
+            self.with_cp
+            and torch.is_grad_enabled()
+            and isinstance(x, torch.Tensor)
+            and x.requires_grad
+        )
+        if use_checkpoint:
             return checkpoint.checkpoint(_inner_forward, x, H, W)
         else:
             return _inner_forward(x, H, W)
@@ -576,8 +582,19 @@ class InternViT(BaseModule):
         x = self.embeddings(x)
         # print(x)
         features = []
-        for i, blk in enumerate(self.layers):
-            if self.gradient_checkpointing and self.training:
+        
+        layer_requires_grad = [any(p.requires_grad for p in blk.parameters())
+                               for blk in self.layers]
+        for i, (blk, block_requires_grad) in enumerate(zip(self.layers, layer_requires_grad)):
+            use_checkpoint = (
+                self.gradient_checkpointing
+                and self.training
+                and torch.is_grad_enabled()
+                and block_requires_grad
+                and isinstance(x, torch.Tensor)
+                and x.requires_grad
+            )
+            if use_checkpoint:
                 x = checkpoint.checkpoint(blk, x)
             else:
                 x = blk(x)
