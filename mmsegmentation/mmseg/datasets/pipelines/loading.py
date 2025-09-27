@@ -183,10 +183,13 @@ class LoadDataFromFile(object):
         field_name="band",
         to_float32=False,
         flag='color',  # ['unchanged', 'color']
+        backend='cv2', # ['cv2', 'pillow']
     ):
         self.to_float32 = to_float32
         self.field_name = field_name
         self.flag = flag
+        self.backend = backend
+
 
     def __call__(self, results):
         """Call functions to load image and get image meta information.
@@ -211,7 +214,7 @@ class LoadDataFromFile(object):
             img = np.load(filename)  # t c h w for pastis-r
             img = img.transpose((0, 2, 3, 1))  # t h w c
         elif filename.endswith((".png", ".jpg", ".tif", ".tiff")):  # 加载标签图像
-            img = mmcv.imread(filename, flag=self.flag, backend='pillow')  # (H, W, C)
+            img = mmcv.imread(filename, flag=self.flag, backend=self.backend)  # (H, W, C)
         else:
             raise ValueError(f"Unsupported file type: {filename}")
 

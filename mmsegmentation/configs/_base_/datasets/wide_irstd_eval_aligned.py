@@ -7,10 +7,11 @@ background = (0, 0, 0)  # BGR
 
 # 优化的训练数据增强管道
 train_pipeline = [
-    dict(type="LoadDataFromFile", flag='color'),  # 使用cv2后端，更快
+    dict(type="LoadDataFromFile", flag='color', backend='cv2'),  # 使用cv2后端，更快
     dict(type="LoadAnnotations", reduce_zero_label=reduce_zero_label),
     dict( type="RandomPadCrop", crop_size=(448, 448), ),
     dict(type="RandomFlip", prob=0.5, direction="horizontal"),
+    dict(type="RandomInvert", prob=0.01),
     # dict(type="Normalize", mean=[0.2517], std=[0.0961], to_rgb=False),
     dict(type="DefaultFormatBundle"),
     dict(type="Collect", keys=["img", "gt_semantic_seg"]),
@@ -18,7 +19,7 @@ train_pipeline = [
 
 # 优化的验证管道
 val_pipeline = [
-    dict(type="LoadDataFromFile", flag='color'),  # 统一使用cv2
+    dict(type="LoadDataFromFile", flag='color', backend='cv2'),  # 统一使用cv2
     dict(type="LoadAnnotations", reduce_zero_label=reduce_zero_label),
     dict(
         type="MultiScaleFlipAug",
@@ -29,7 +30,7 @@ val_pipeline = [
             # 完全保持原尺寸，只做padding - 模拟evaluate.py的行为
             dict(
                 type="CenterPad",
-                size_divisor=448,  # padding到448的倍数，匹配模型的crop_size
+                size_divisor=224,  # padding到448的倍数，匹配模型的crop_size
                 pad_val=0,
                 seg_pad_val=0
             ),
@@ -60,6 +61,7 @@ data = dict(
     prefetch_factor=4,  # 预加载因子，减少GPU等待时间
     persistent_workers=True,  # 保持worker常驻，减少重启开销
     pin_memory=True,  # 使用页锁定内存，加速GPU传输
+    shuffle=False,
     train=dict(
         type=dataset_type,
         pipeline=train_pipeline,
