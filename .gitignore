@@ -254,3 +254,4 @@ audio/
 *.yml
 *.json
 *.txt
+mmsegmentation/train_dist.sh
