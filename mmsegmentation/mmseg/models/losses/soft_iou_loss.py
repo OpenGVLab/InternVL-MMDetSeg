@@ -38,12 +38,28 @@ class SoftIoULoss(nn.Module):
         if preds.ndim == 4:  # image
             preds = torch.sigmoid(preds)
 
+            # 确保标签是二值的 (0, 1)
+            if labels.max() > 1:
+                print(f"Fixed labels: max was {labels.unique()}")
+                labels = (labels > 0).float()
+                
+                assert 0
+
             intersection = preds * labels.unsqueeze(1)  # B,H,W -> B,1,H,W
+           
+            
             loss = (intersection.sum() + smooth) / (
                 preds.sum() + labels.sum() - intersection.sum() + smooth
             )
             loss = 1 - loss.mean()
-
+            if loss < 0:
+                print(f"preds: {preds.shape}")
+                print(f"labels: {labels.shape}")
+                print(f"intersection.sum(): {intersection.sum()}")
+                print(f"preds.sum(): {preds.sum()}")
+                print(f"labels.sum(): {labels.sum()}")
+                print(f"loss: {loss}")
+                assert 0
             return loss
 
         elif preds.ndim == 5:  # sequence
