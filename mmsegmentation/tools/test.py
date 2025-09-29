@@ -7,6 +7,7 @@ import time
 import warnings
 
 import mmcv
+import numpy as np
 import torch
 from mmcv.cnn.utils import revert_sync_batchnorm
 from mmcv.runner import (get_dist_info, init_dist, load_checkpoint,
@@ -19,7 +20,205 @@ from mmseg.datasets import build_dataloader, build_dataset
 from mmseg.models import build_segmentor
 from mmseg.utils import build_ddp, build_dp, get_device, setup_multi_processes
 
-
+def save_prediction_images(results, dataset, pred_dir, pred_format='png'):
+    """Save prediction masks, original images, GT masks, and overlay images.
+    
+    Args:
+        results (list): List of prediction results
+        dataset: Dataset object containing image information
+        pred_dir (str): Directory to save prediction images
+        pred_format (str): Image format ('png', 'jpg', 'jpeg')
+    """
+    import cv2
+    from PIL import Image
+    import matplotlib.pyplot as plt
+    
+    # Ensure pred_dir exists
+    mmcv.mkdir_or_exist(pred_dir)
+    
+    # Get palette for visualization
+    if hasattr(dataset, 'PALETTE') and dataset.PALETTE is not None:
+        palette = np.array(dataset.PALETTE)
+    else:
+        # Generate random palette if not available
+        num_classes = len(dataset.CLASSES) if hasattr(dataset, 'CLASSES') else 256
+        palette = np.random.randint(0, 255, size=(num_classes, 3))
+    
+    print(f'Saving {len(results)} prediction images...')
+    
+    for idx, result in enumerate(results):
+        try:
+            # Get image info from dataset
+            if hasattr(dataset, 'img_infos'):
+                img_info = dataset.img_infos[idx]
+            elif hasattr(dataset, 'data_infos'):
+                img_info = dataset.data_infos[idx]
+            else:
+                # For Subset datasets, get from the underlying dataset
+                if hasattr(dataset, 'dataset'):
+                    if hasattr(dataset.dataset, 'img_infos'):
+                        img_info = dataset.dataset.img_infos[dataset.indices[idx]]
+                    elif hasattr(dataset.dataset, 'data_infos'):
+                        img_info = dataset.dataset.data_infos[dataset.indices[idx]]
+                    else:
+                        print(f'Warning: Cannot get image info for index {idx}')
+                        continue
+                else:
+                    print(f'Warning: Cannot get image info for index {idx}')
+                    continue
+            
+            # Get filename without extension for naming
+            if 'filename' in img_info:
+                img_filename = img_info['filename']
+            elif 'img_path' in img_info:
+                img_filename = osp.basename(img_info['img_path'])
+            else:
+                img_filename = f'{idx:05d}.png'
+            
+            base_name = osp.splitext(osp.basename(img_filename))[0]
+            
+            # Load original image
+            if 'filename' in img_info:
+                img_path = osp.join(dataset.img_dir, img_info['filename'])
+            elif 'img_path' in img_info:
+                img_path = img_info['img_path']
+            else:
+                print(f'Warning: Cannot find image path for index {idx}')
+                continue
+                
+            if not osp.exists(img_path):
+                print(f'Warning: Image file not found: {img_path}')
+                continue
+                
+            original_img = mmcv.imread(img_path)
+            
+            # Get prediction result (assuming result is a list with segmentation mask)
+            if isinstance(result, list) and len(result) > 0:
+                pred_mask = result[0]  # First element is usually the segmentation mask
+            else:
+                pred_mask = result
+            
+            # Ensure pred_mask is numpy array
+            if torch.is_tensor(pred_mask):
+                pred_mask = pred_mask.cpu().numpy()
+            
+            # Squeeze extra dimensions if present
+            if pred_mask.ndim > 2:
+                pred_mask = pred_mask.squeeze()
+            
+            # Save prediction mask as grayscale
+            # pred_path = osp.join(pred_dir, f'{base_name}_pred.{pred_format}')
+            # cv2.imwrite(pred_path, pred_mask.astype(np.uint8))
+            
+            # # Save original image
+            # orig_path = osp.join(pred_dir, f'{base_name}_original.{pred_format}')
+            # cv2.imwrite(orig_path, original_img)
+            
+            # Try to load and save ground truth if available
+            try:
+                if 'ann' in img_info and 'seg_map' in img_info['ann']:
+                    gt_path_rel = img_info['ann']['seg_map']
+                    gt_path = osp.join(dataset.ann_dir, gt_path_rel)
+                elif hasattr(dataset, 'get_ann_info'):
+                    ann_info = dataset.get_ann_info(idx)
+                    if 'seg_map' in ann_info:
+                        gt_path = osp.join(dataset.ann_dir, ann_info['seg_map'])
+                    else:
+                        gt_path = None
+                else:
+                    gt_path = None
+                
+                if gt_path and osp.exists(gt_path):
+                    gt_mask = mmcv.imread(gt_path, flag='grayscale')
+                    # Squeeze extra dimensions if present
+                    if gt_mask.ndim > 2:
+                        gt_mask = gt_mask.squeeze()
+                    gt_save_path = osp.join(pred_dir, f'{base_name}_gt.{pred_format}')
+                    # cv2.imwrite(gt_save_path, gt_mask)
+                else:
+                    print(f'Warning: Ground truth not found for {base_name}')
+                    gt_mask = None
+            except Exception as e:
+                print(f'Warning: Could not load ground truth for {base_name}: {e}')
+                gt_mask = None
+            
+            # Create overlay image (prediction on original)
+            try:
+                overlay_img = original_img.copy()
+                
+                # Create colored segmentation mask
+                color_seg = np.zeros((pred_mask.shape[0], pred_mask.shape[1], 3), dtype=np.uint8)
+                for label in range(len(palette)):
+                    if label < len(palette):
+                        color_seg[pred_mask == label, :] = palette[label]
+                
+                # Convert to BGR for OpenCV
+                color_seg = color_seg[..., ::-1]
+                
+                # Blend with original image
+                opacity = 0.5
+                overlay_img = overlay_img * (1 - opacity) + color_seg * opacity
+                overlay_img = overlay_img.astype(np.uint8)
+                
+                # overlay_path = osp.join(pred_dir, f'{base_name}_overlay.{pred_format}')
+                # cv2.imwrite(overlay_path, overlay_img)
+            except Exception as e:
+                print(f'Warning: Could not create overlay for {base_name}: {e}')
+            
+            # Create comparison image if GT is available
+            if gt_mask is not None:
+                try:
+                    # Create a side-by-side comparison
+                    fig, axes = plt.subplots(1, 4, figsize=(20, 5))
+                    
+                    # Original image
+                    axes[0].imshow(cv2.cvtColor(original_img, cv2.COLOR_BGR2RGB))
+                    axes[0].set_title('Original')
+                    axes[0].axis('off')
+                    
+                    # Ground truth with colored visualization
+                    gt_colored = np.zeros((gt_mask.shape[0], gt_mask.shape[1], 3), dtype=np.uint8)
+                    # Use green color for GT (RGB: 0, 255, 0)
+                    gt_colored[gt_mask > 0] = [0, 255, 0]
+                    axes[1].imshow(gt_colored)
+                    axes[1].set_title('Ground Truth (Green)')
+                    axes[1].axis('off')
+                    
+                    # Prediction with colored visualization
+                    pred_colored = np.zeros((pred_mask.shape[0], pred_mask.shape[1], 3), dtype=np.uint8)
+                    # Use red color for prediction (RGB: 255, 0, 0)
+                    pred_colored[pred_mask > 0] = [255, 0, 0]
+                    axes[2].imshow(pred_colored)
+                    axes[2].set_title('Prediction (Red)')
+                    axes[2].axis('off')
+                    
+                    # Overlay comparison (GT in green, Prediction in red)
+                    overlay_comparison = np.zeros((gt_mask.shape[0], gt_mask.shape[1], 3), dtype=np.uint8)
+                    overlay_comparison[gt_mask > 0] = [0, 255, 0]  # Green for GT
+                    overlay_comparison[pred_mask > 0] = [255, 0, 0]  # Red for prediction
+                    # Where both GT and prediction are present, use yellow (mix of green and red)
+                    both_mask = (gt_mask > 0) & (pred_mask > 0)
+                    overlay_comparison[both_mask] = [255, 255, 0]  # Yellow for overlap
+                    axes[3].imshow(overlay_comparison)
+                    axes[3].set_title('Overlay (Green=GT, Red=Pred, Yellow=Both)')
+                    axes[3].axis('off')
+                    
+                    plt.tight_layout()
+                    comp_path = osp.join(pred_dir, f'{base_name}_comparison.{pred_format}')
+                    plt.savefig(comp_path, dpi=150, bbox_inches='tight')
+                    plt.close()
+                except Exception as e:
+                    print(f'Warning: Could not create comparison for {base_name}: {e}')
+                    plt.close()  # Ensure figure is closed even on error
+            
+        except Exception as e:
+            print(f'Error processing image {idx}: {e}')
+            continue
+        
+        # Progress logging
+        if (idx + 1) % 100 == 0:
+            print(f'Saved {idx + 1}/{len(results)} prediction images...')
+    
 def parse_args():
     parser = argparse.ArgumentParser(
         description='mmseg test (and eval) a model')
@@ -97,7 +296,26 @@ def parse_args():
         type=float,
         default=0.5,
         help='Opacity of painted segmentation map. In (0, 1] range.')
+    parser.add_argument(
+        '--save-pred',
+        action='store_true',
+        default=True,
+        help='Save prediction masks as images')
+    parser.add_argument(
+        '--pred-dir',
+        help='Directory to save prediction images')
+    parser.add_argument(
+        '--pred-format',
+        type=str,
+        default='png',
+        choices=['png', 'jpg', 'jpeg'],
+        help='Format for saving prediction images')
     parser.add_argument('--local_rank', type=int, default=0)
+    parser.add_argument(
+        '--max-test-samples',
+        type=int,
+        default=None,
+        help='Maximum number of test samples to process (for debugging)')
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
@@ -118,10 +336,10 @@ def parse_args():
 def main():
     args = parse_args()
     assert args.out or args.eval or args.format_only or args.show \
-        or args.show_dir, \
+        or args.show_dir or args.save_pred, \
         ('Please specify at least one operation (save/eval/format/show the '
          'results / save the results) with the argument "--out", "--eval"'
-         ', "--format-only", "--show" or "--show-dir"')
+         ', "--format-only", "--show", "--show-dir" or "--save-pred"')
 
     if args.eval and args.format_only:
         raise ValueError('--eval and --format_only cannot be both specified')
@@ -186,10 +404,42 @@ def main():
         else:
             json_file = osp.join(work_dir,
                                  f'eval_single_scale_{timestamp}.json')
+    
+    # Set up prediction directory
+    if args.save_pred and rank == 0:
+        if args.pred_dir is not None:
+            pred_dir = osp.abspath(args.pred_dir)
+        else:
+            if args.work_dir is not None:
+                pred_dir = osp.join(args.work_dir, 'predictions')
+            else:
+                pred_dir = osp.join(work_dir, 'predictions')
+        mmcv.mkdir_or_exist(pred_dir)
+        print(f'Prediction images will be saved to: {pred_dir}')
 
     # build the dataloader
     # TODO: support multiple images per gpu (only minor changes are needed)
     dataset = build_dataset(cfg.data.test)
+    
+    # Limit dataset size for debugging if specified
+    if args.max_test_samples is not None and args.max_test_samples > 0:
+        print(f'Limiting test dataset to {args.max_test_samples} samples for debugging')
+        if hasattr(dataset, 'img_infos'):
+            # For NUDTSIRSTDataset, use img_infos
+            dataset.img_infos = dataset.img_infos[:args.max_test_samples]
+        elif hasattr(dataset, 'data_infos'):
+            # For other datasets, use data_infos
+            dataset.data_infos = dataset.data_infos[:args.max_test_samples]
+        else:
+            # Fallback: create a subset by slicing the dataset
+            original_len = len(dataset)
+            subset_indices = range(min(args.max_test_samples, original_len))
+            dataset = torch.utils.data.Subset(dataset, subset_indices)
+            # Copy important attributes from the original dataset
+            if hasattr(dataset.dataset, 'CLASSES'):
+                dataset.CLASSES = dataset.dataset.CLASSES
+            if hasattr(dataset.dataset, 'PALETTE'):
+                dataset.PALETTE = dataset.dataset.PALETTE
     # The default loader config
     loader_cfg = dict(
         # cfg.gpus will be ignored if distributed
@@ -298,14 +548,14 @@ def main():
 
     rank, _ = get_dist_info()
     if rank == 0:
-        if args.out:
-            warnings.warn(
-                'The behavior of ``args.out`` has been changed since MMSeg '
-                'v0.16, the pickled outputs could be seg map as type of '
-                'np.array, pre-eval results or file paths for '
-                '``dataset.format_results()``.')
-            print(f'\nwriting results to {args.out}')
-            mmcv.dump(results, args.out)
+        # if args.out:
+        #     warnings.warn(
+        #         'The behavior of ``args.out`` has been changed since MMSeg '
+        #         'v0.16, the pickled outputs could be seg map as type of '
+        #         'np.array, pre-eval results or file paths for '
+        #         '``dataset.format_results()``.')
+        #     print(f'\nwriting results to {args.out}')
+        #     mmcv.dump(results, args.out)
         if args.eval:
             eval_kwargs.update(metric=args.eval)
             metric = dataset.evaluate(results, **eval_kwargs)
@@ -314,6 +564,10 @@ def main():
             if tmpdir is not None and eval_on_format_results:
                 # remove tmp dir when cityscapes evaluation
                 shutil.rmtree(tmpdir)
+        
+        # Save prediction images if requested
+        if args.save_pred:
+            save_prediction_images(results, dataset, pred_dir, args.pred_format)
 
 
 if __name__ == '__main__':
