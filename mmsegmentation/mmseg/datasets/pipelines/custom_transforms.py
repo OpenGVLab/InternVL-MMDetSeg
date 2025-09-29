@@ -259,3 +259,46 @@ class DNANetTransforms(object):
         )  # img: <class 'mxnet.ndarray.ndarray.NDArray'> (512, 512, 3)
 
         return img, mask
+
+
+@PIPELINES.register_module()
+class RandomGaussianBlur(object):
+    """Random Gaussian blur augmentation for images with mirror transforms.
+    
+    Args:
+        prob (float): Probability of applying blur. Default: 0.5.
+    """
+    
+    def __init__(self, prob=0.5):
+        self.prob = prob
+    
+    def __call__(self, results):
+        img = results["img"]
+        mask = results["gt_semantic_seg"]
+        
+        if isinstance(img, np.ndarray):
+            img = Image.fromarray(img)
+        if isinstance(mask, np.ndarray):
+            mask = Image.fromarray(mask)
+        
+        # Random mirror flip (same as DNANetTransforms)
+        flip = random.random() < 0.5
+        results['flip'] = flip
+        results['flip_direction'] = 'horizontal'
+        if flip:
+            img = img.transpose(Image.FLIP_LEFT_RIGHT)
+            mask = mask.transpose(Image.FLIP_LEFT_RIGHT)
+        
+        # Random Gaussian blur
+        if random.random() < self.prob:
+            img = img.filter(ImageFilter.GaussianBlur(radius=random.random()))
+        
+        # Convert back to numpy arrays
+        if isinstance(img, Image.Image):
+            img = np.array(img)
+        if isinstance(mask, Image.Image):
+            mask = np.array(mask)
+            
+        results["img"] = img
+        results["gt_semantic_seg"] = mask
+        return results

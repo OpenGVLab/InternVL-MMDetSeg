@@ -1044,6 +1044,55 @@ class CenterPad(object):
 
 
 
+@PIPELINES.register_module()
+class RandomInvert(object):
+    """Randomly invert the image pixel values.
+    
+    This transform inverts the pixel values of the image with a given probability.
+    For an 8-bit image, pixel value v becomes (255 - v).
+    
+    Args:
+        prob (float): The probability of applying the inversion. Default: 0.1.
+    """
+    
+    def __init__(self, prob=0.1):
+        assert 0.0 <= prob <= 1.0, f'prob should be in range [0, 1], got {prob}'
+        self.prob = prob
+    
+    def __call__(self, results):
+        """Call function to randomly invert image pixel values.
+        
+        Args:
+            results (dict): Result dict from loading pipeline.
+            
+        Returns:
+            dict: Result dict with possibly inverted image.
+        """
+        
+        if np.random.rand() < self.prob:
+            img = results['img']
+            # Invert pixel values: new_value = max_value - original_value
+            if img.dtype == np.uint8:
+                results['img'] = 255 - img
+            elif img.dtype == np.float32 or img.dtype == np.float64:
+                # For float images, assume they are in [0, 1] range
+                results['img'] = 1.0 - img
+            else:
+                # For other dtypes, try to determine max value
+                if img.dtype == np.uint16:
+                    results['img'] = 65535 - img
+                else:
+                    # Fallback: assume max value based on dtype info
+                    max_val = np.iinfo(img.dtype).max if np.issubdtype(img.dtype, np.integer) else 1.0
+                    results['img'] = max_val - img
+        
+        return results
+    
+    def __repr__(self):
+        return self.__class__.__name__ + f'(prob={self.prob})'
+
+
+
 
 @PIPELINES.register_module()
 class RandomPadCrop(object):
@@ -1068,7 +1117,7 @@ class RandomPadCrop(object):
         self.seg_pad_val = seg_pad_val
     
     def pad_if_needed(self, img, is_seg=False):
-        """Pad the image if its size is smaller than crop_size."""
+        """Pad the image if its size is smaller than crop_size, or resize if very small."""
         img_h, img_w = img.shape[:2]
         crop_h, crop_w = self.crop_size
         
@@ -1128,22 +1177,26 @@ class RandomPadCrop(object):
                 updated according to crop size.
         """
         
-        # 先对图像进行必要的填充
+        # 先对图像进行必要的填充或resize
         img = self.pad_if_needed(results['img'])
         results['img'] = img
         
-        # 处理mask：多通道转单通道，255转1
+        # 处理mask：先应用resize/padding，再进行格式转换
         mask = results['gt_semantic_seg']
+        # 先对mask应用相同的resize/padding策略
+        mask = self.pad_if_needed(mask, is_seg=True)
+        
+        # 然后进行格式转换：多通道转单通道，255转1
         if len(mask.shape) == 3:
             mask = mask[:, :, 0]  # 取第一个通道
         
         mask[mask > 1] = 1
         results["gt_semantic_seg"] = mask
         
-        
-        # 对分割图也进行填充
+        # 对其他分割图字段也进行填充或resize
         for key in results.get('seg_fields', []):
-            results[key] = self.pad_if_needed(results[key], is_seg=True)
+            if key != 'gt_semantic_seg':  # gt_semantic_seg已经处理过了
+                results[key] = self.pad_if_needed(results[key], is_seg=True)
         
         # 获取裁剪框
         crop_bbox = self.get_crop_bbox(img)
@@ -1990,4 +2043,142 @@ class RandomMosaic(object):
         repr_str += f'center_ratio_range={self.center_ratio_range}, '
         repr_str += f'pad_val={self.pad_val}, '
         repr_str += f'seg_pad_val={self.pad_val})'
+        return repr_str
+
+
+@PIPELINES.register_module()
+class ResizeToMinSize(object):
+    """Resize images & seg to minimum size if smaller than target size.
+    
+    This transform resizes both image and segmentation mask to the target size
+    if either dimension is smaller than the target size. It maintains aspect ratio
+    and uses padding if necessary.
+    
+    Args:
+        min_size (int): Minimum size for both width and height. Default: 896.
+        interpolation (str): Interpolation method for image resize. Default: 'bilinear'.
+        keep_ratio (bool): Whether to keep aspect ratio when resizing. Default: True.
+        pad_val (float): Padding value for images. Default: 0.
+        seg_pad_val (float): Padding value for segmentation maps. Default: 255.
+    """
+    
+    def __init__(self, 
+                 min_size=896,
+                 interpolation='bilinear', 
+                 keep_ratio=True,
+                 pad_val=0,
+                 seg_pad_val=0):
+        self.min_size = min_size
+        self.interpolation = interpolation
+        self.keep_ratio = keep_ratio
+        self.pad_val = pad_val
+        self.seg_pad_val = seg_pad_val
+    
+    def _resize_img(self, results):
+        """Resize image to minimum size."""
+        img = results['img']
+        h, w = img.shape[:2]
+        
+        # Check if resize is needed
+        if h >= self.min_size and w >= self.min_size:
+            # Still record scale_factor even if no resize is done
+            results['img_shape'] = img.shape
+            results['pad_shape'] = img.shape
+            results['scale_factor'] = np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32)
+            results['keep_ratio'] = self.keep_ratio
+            return results
+        
+        if self.keep_ratio:
+            # Calculate scale factor to ensure both dimensions are at least min_size
+            scale_factor = max(self.min_size / h, self.min_size / w)
+            new_h = int(h * scale_factor)
+            new_w = int(w * scale_factor)
+            
+            # Resize image
+            img = mmcv.imresize(img, (new_w, new_h), interpolation=self.interpolation)
+            
+            # Calculate actual scale factors
+            w_scale = new_w / w
+            h_scale = new_h / h
+            
+            # Pad to exact min_size if needed
+            if new_h < self.min_size or new_w < self.min_size:
+                pad_target_h = max(new_h, self.min_size)
+                pad_target_w = max(new_w, self.min_size)
+                img = mmcv.impad(img, shape=(pad_target_h, pad_target_w), pad_val=self.pad_val)
+                
+                # Update scale factors for padding
+                w_scale = pad_target_w / w
+                h_scale = pad_target_h / h
+        else:
+            # Direct resize to min_size x min_size
+            img = mmcv.imresize(img, (self.min_size, self.min_size), 
+                              interpolation=self.interpolation)
+            w_scale = self.min_size / w
+            h_scale = self.min_size / h
+        
+        # Record scale factor - this is crucial for training
+        scale_factor = np.array([w_scale, h_scale, w_scale, h_scale], dtype=np.float32)
+        
+        results['img'] = img
+        results['img_shape'] = img.shape
+        results['pad_shape'] = img.shape
+        results['scale_factor'] = scale_factor
+        results['keep_ratio'] = self.keep_ratio
+        
+        return results
+    
+    def _resize_seg(self, results):
+        """Resize segmentation maps to match image size."""
+        for key in results.get('seg_fields', []):
+            seg = results[key]
+            h, w = seg.shape[:2]
+            
+            # Check if resize is needed
+            if h >= self.min_size and w >= self.min_size:
+                continue
+            
+            if self.keep_ratio:
+                # Calculate scale factor to ensure both dimensions are at least min_size
+                scale_factor = max(self.min_size / h, self.min_size / w)
+                new_h = int(h * scale_factor)
+                new_w = int(w * scale_factor)
+                
+                # Resize segmentation map
+                seg = mmcv.imresize(seg, (new_w, new_h), interpolation='nearest')
+                
+                # Pad to exact min_size if needed
+                if new_h < self.min_size or new_w < self.min_size:
+                    target_h = max(new_h, self.min_size)
+                    target_w = max(new_w, self.min_size)
+                    seg = mmcv.impad(seg, shape=(target_h, target_w), pad_val=self.seg_pad_val)
+            else:
+                # Direct resize to min_size x min_size
+                seg = mmcv.imresize(seg, (self.min_size, self.min_size), 
+                                  interpolation='nearest')
+            
+            results[key] = seg
+        
+        return results
+    
+    def __call__(self, results):
+        """Call function to resize images and segmentation maps.
+        
+        Args:
+            results (dict): Result dict from loading pipeline.
+            
+        Returns:
+            dict: Resized results with updated 'img_shape' and 'pad_shape'.
+        """
+        results = self._resize_img(results)
+        results = self._resize_seg(results)
+        return results
+    
+    def __repr__(self):
+        repr_str = self.__class__.__name__
+        repr_str += f'(min_size={self.min_size}, '
+        repr_str += f'interpolation={self.interpolation}, '
+        repr_str += f'keep_ratio={self.keep_ratio}, '
+        repr_str += f'pad_val={self.pad_val}, '
+        repr_str += f'seg_pad_val={self.seg_pad_val})'
         return repr_str

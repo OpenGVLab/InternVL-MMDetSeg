@@ -9,6 +9,7 @@ background = (0, 0, 0)  # BGR
 train_pipeline = [
     dict(type="LoadDataFromFile", flag='color', backend='cv2'),  # 使用cv2后端，更快
     dict(type="LoadAnnotations", reduce_zero_label=reduce_zero_label),
+    dict(type='ResizeToMinSize', min_size=448, keep_ratio=True),  # 保持比例放大到最小448
     dict( type="RandomPadCrop", crop_size=(448, 448), ),
     dict(type="RandomFlip", prob=0.5, direction="horizontal"),
     dict(type="RandomInvert", prob=0.01),
@@ -27,7 +28,7 @@ val_pipeline = [
         img_ratios=[1.0],  # 必须提供，表示不缩放
         flip=False,
         transforms=[
-            # 完全保持原尺寸，只做padding - 模拟evaluate.py的行为
+            dict(type='ResizeToMinSize', min_size=448, keep_ratio=True),  # 保持比例放大到最小448
             dict(
                 type="CenterPad",
                 size_divisor=224,  # padding到448的倍数，匹配模型的crop_size
@@ -108,3 +109,4 @@ data = dict(
         label_map={255: 1},  # 将 target 的像素值 255 映射为 1
     ),
 )
+
