@@ -17,7 +17,7 @@ deepspeed_config = 'zero_configs/adam_zero2_bf16_fast.json'  # 启用BF16 + ZeRO
 
 # pretrained = '/home/intern/InternVL/internvl_chat/work_dirs/internvl_chat_v2_5/internvl2_5_1b_dynamic_res_2nd_finetune_full/model.safetensors'
 # pretrained = '/home/intern/InternVL/internvl_chat/work_dirs/internvl_chat_v2_5/irstd/model.safetensors'
-pretrained = '/home/intern/InternVL/internvl_chat/work_dirs/internvl_chat_v2_5/irstd_v6_freeze_llm_3epoch/model.safetensors'
+pretrained = '/home/intern/InternVL/internvl_chat/work_dirs/internvl_chat_v2_5/irstd_finetune_dataset_refcoco_format_filtered/model.safetensors'
 model = dict(
     pretrained=None,
     type='EncoderDecoder', 

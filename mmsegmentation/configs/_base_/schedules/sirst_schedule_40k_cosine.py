@@ -9,7 +9,7 @@ lr_config = dict(
     policy='CosineAnnealing',
     min_lr=1e-7,  # 最小学习率，避免完全归零
     warmup='linear',
-    warmup_iters=2000,  # warmup迭代数，约占总训练的2.5%
+    warmup_iters=2000,  # warmup迭代数，约占总训的2.5%
     warmup_ratio=0.1,   # warmup时学习率比例
     by_epoch=False
 )# lr_config = dict(warmup='linear', warmup_iters=2000,
@@ -17,12 +17,12 @@ lr_config = dict(
 # runtime settings
 
 
-interval = 2000
+interval = 4000
 # interval = 100
 runner = dict(type="IterBasedRunner", max_iters=40000)
 # todo 仅保留了后五个 checkpoint, 而不是最优的！
 checkpoint_config = dict(
-    by_epoch=False,
+    by_epoch=True,
     interval=interval,
     max_keep_ckpts=1,
     create_symlink=False,
@@ -34,11 +34,13 @@ checkpoint_config = dict(
 # 如果 real_time=True, 单个推理结果直接进行指标计算, 默认为 False, 所有结果推理结束后统一计算
 evaluation = dict(
     interval=interval,
-    gpu_collect=False,
-    by_epoch=False,
-    metric=["PdFa", "ROC", "mIoU"],
+    save_best='mIoU',  # 保存target类IoU最佳的模型（使用类别名称而不是索引）
+    rule='greater',     # 明确指定IoU.target越大越好
+    gpu_collect=True,  # 使用GPU收集结果，避免CPU收集问题
+    by_epoch=True,
+    metric=["PdFa", "mIoU"],#    metric=["PdFa", "ROC", "mIoU"],
     ROC_thr=10,
     real_time=True,
     show=False,
-)  # nan_to_num=0
+)   # nan_to_num=0
 find_unused_parameters = True

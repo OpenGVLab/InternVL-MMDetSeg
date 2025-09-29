@@ -16,7 +16,7 @@ deepspeed_config = 'zero_configs/adam_zero2_bf16_fast.json'  # 启用BF16 + ZeRO
 # pretrained = './pretrained/InternVL2_5-1B/model.safetensors'
 
 # pretrained = '/home/intern/InternVL/internvl_chat/work_dirs/internvl_chat_v2_5/internvl2_5_1b_dynamic_res_2nd_finetune_full/model.safetensors'
-pretrained = '/home/intern/InternVL/internvl_chat/work_dirs/internvl_chat_v2_5/irstd/model.safetensors'
+pretrained = '/home/intern/InternVL/internvl_chat/work_dirs/internvl_chat_v2_5/irstd_finetune_dataset_centroid_format_filtered/model.safetensors'
 model = dict(
     pretrained=None,
     type='EncoderDecoder', 
@@ -32,7 +32,7 @@ model = dict(
         drop_path_rate=0.1,
         init_values=0.1,
         with_cp=True,
-        use_flash_attn=True,
+        use_flash_attn=False,
         qk_normalization=True,
         layerscale_force_fp32=False,
         output_dtype="bfloat16",
@@ -63,7 +63,7 @@ model = dict(
         )),
     # Deep Supervision: 添加多个auxiliary heads
 
-    test_cfg=dict(mode="slide", crop_size=(448, 448), stride=(224, 224))
+    test_cfg=dict(mode="slide", crop_size=(448, 448), stride=(338, 338))
 )
 # optimizer = dict(_delete_=True, type='AdamW', lr=4e-5, betas=(0.9, 0.999), weight_decay=0.0,
 #                  constructor='CustomLayerDecayOptimizerConstructor',

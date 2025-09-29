@@ -1,6 +1,6 @@
 # dataset settings
 dataset_type = "NUDTSIRSTDataset"
-data_root = "/home/intern/aaai/Infrared-Small-Target-Detection/dataset/NUDT-SIRST"
+data_root = "/home/intern/nips/datasets/NUDT-SIRST"
 split_dir = "50_50"
 reduce_zero_label = False
 ignore_index = 0  # not use

@@ -21,7 +21,7 @@ model = dict(
 train_cfg = dict()
 test_cfg = dict(mode='whole')
 dataset_type = 'NUDTSIRSTDataset'
-data_root = '/home/intern/aaai/Infrared-Small-Target-Detection/dataset/wide_irstd'
+data_root = '/home/intern/nips/datasets/wide_irstd'
 reduce_zero_label = False
 ignore_index = -100
 background = (0, 0, 0)
@@ -70,8 +70,11 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    samples_per_gpu=8,
+    samples_per_gpu=2,
     workers_per_gpu=4,
+    prefetch_factor=4,
+    persistent_workers=True,
+    pin_memory=True,
     train=dict(
         type='NUDTSIRSTDataset',
         pipeline=[
@@ -86,8 +89,7 @@ data = dict(
             dict(type='DefaultFormatBundle'),
             dict(type='Collect', keys=['img', 'gt_semantic_seg'])
         ],
-        data_root=
-        '/home/intern/aaai/Infrared-Small-Target-Detection/dataset/wide_irstd',
+        data_root='/home/intern/nips/datasets/wide_irstd',
         img_dir='train/images',
         img_suffix='.png',
         ann_dir='train/masks',
@@ -117,8 +119,7 @@ data = dict(
                     dict(type='Collect', keys=['img'])
                 ])
         ],
-        data_root=
-        '/home/intern/aaai/Infrared-Small-Target-Detection/dataset/wide_irstd',
+        data_root='/home/intern/nips/datasets/wide_irstd',
         img_dir='test/images',
         img_suffix='.png',
         ann_dir='test/masks',
@@ -148,8 +149,7 @@ data = dict(
                     dict(type='Collect', keys=['img'])
                 ])
         ],
-        data_root=
-        '/home/intern/aaai/Infrared-Small-Target-Detection/dataset/wide_irstd',
+        data_root='/home/intern/nips/datasets/wide_irstd',
         img_dir='test/images',
         img_suffix='.png',
         ann_dir='test/masks',
@@ -168,30 +168,27 @@ load_from = None
 resume_from = None
 workflow = [('train', 1)]
 cudnn_benchmark = True
-optimizer = dict(
-    type='Adam', lr=0.0001, weight_decay=1e-05, betas=(0.9, 0.999))
 optimizer_config = dict()
 lr_config = dict(policy='poly', power=0.9, min_lr=0, by_epoch=False)
-interval = 2000
+interval = 4000
 runner = dict(type='IterBasedRunner', max_iters=40000)
 checkpoint_config = dict(
     by_epoch=False,
     interval=2000,
     max_keep_ckpts=2,
     create_symlink=False,
-    save_optimizer=True,
-    deepspeed=True)
+    save_optimizer=True)
 evaluation = dict(
-    interval=2000,
+    interval=4000,
     gpu_collect=False,
-    by_epoch=False,
+    by_epoch=True,
     metric=['PdFa', 'ROC', 'mIoU'],
     ROC_thr=10,
-    real_time=True,
+    real_time=False,
     show=False)
 find_unused_parameters = True
-deepspeed = True
+deepspeed = False
 deepspeed_config = 'zero_configs/adam_zero1_minimal.json'
 work_dir = './work_dirs/dnanet_256x256_40k_wide'
-gpu_ids = range(0, 4)
+gpu_ids = range(0, 1)
 auto_resume = False

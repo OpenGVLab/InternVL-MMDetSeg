@@ -1,6 +1,6 @@
 # dataset settings for Wide IRSTD (Infrared Small Target Detection)
 dataset_type = "NUDTSIRSTDataset"
-data_root = "/home/intern/aaai/Infrared-Small-Target-Detection/dataset/wide_irstd"
+data_root = "/home/intern/nips/datasets/wide_irstd"
 reduce_zero_label = False
 ignore_index = -100  # 改为与主配置文件一致
 background = (0, 0, 0)  # BGR

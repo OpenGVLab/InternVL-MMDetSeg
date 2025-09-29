@@ -6,9 +6,12 @@
 
 _base_ = [
     # '../_base_/models/segmenter_vit-b16_mask.py',
-    "../_base_/datasets/nudt_sirst.py",
+    "../_base_/datasets/nudt_sirst_align_wide.py",
+    # "../_base_/datasets/wide_irstd_eval_aligned.py",
     '../_base_/default_runtime.py',
-    "../_base_/schedules/sirst_schedule_40k.py",
+    "../_base_/schedules/sirst_schedule_epoch_500.py",
+
+    # "../_base_/schedules/sirst_schedule_40k.py",
 ]
 
 deepspeed = True  
@@ -17,7 +20,9 @@ deepspeed_config = 'zero_configs/adam_zero2_bf16_fast.json'  # 启用BF16 + ZeRO
 
 # pretrained = '/home/intern/InternVL/internvl_chat/work_dirs/internvl_chat_v2_5/internvl2_5_1b_dynamic_res_2nd_finetune_full/model.safetensors'
 # pretrained = '/home/intern/InternVL/internvl_chat/work_dirs/internvl_chat_v2_5/irstd/model.safetensors'
-pretrained = '/home/intern/InternVL/internvl_chat/work_dirs/internvl_chat_v2_5/irstd_v6_freeze_llm_3epoch/model.safetensors'
+# pretrained = '/home/intern/InternVL/internvl_chat/work_dirs/internvl_chat_v2_5/irstd_v6_freeze_llm_3epoch/model.safetensors'
+pretrained = '/home/intern/InternVL/internvl_chat/work_dirs/internvl_chat_v2_5/irstd_finetune_dataset_centroid_format_filtered/model.safetensors'
+
 model = dict(
     pretrained=None,
     type='EncoderDecoder', 
@@ -32,13 +37,13 @@ model = dict(
         mlp_ratio=4.,
         drop_path_rate=0.1,
         init_values=0.1,
-        with_cp=True,
+        with_cp=False,
         use_flash_attn=True,
         qk_normalization=True,
         layerscale_force_fp32=False,
         output_dtype="bfloat16",
         last_feat=False,
-        freeze_vit=True,  # 冻结backbone以加速训练
+        freeze_vit=False,  # 冻结backbone以加速训练
         only_feat_out=True,
         interaction_indexes=[[0, 7], [8, 11], [12, 15], [16, 23]],
         cffn_ratio=0.25,
@@ -63,8 +68,8 @@ model = dict(
             loss_weight=1.0
         )),
     # Deep Supervision: 添加多个auxiliary heads
-
-    test_cfg=dict(mode="slide", crop_size=(448, 448), stride=(224, 224))
+    test_cfg=dict(mode="whole"),
+    # test_cfg=dict(mode="slide", crop_size=(448, 448), stride=(224, 224))
 )
 # optimizer = dict(_delete_=True, type='AdamW', lr=4e-5, betas=(0.9, 0.999), weight_decay=0.0,
 #                  constructor='CustomLayerDecayOptimizerConstructor',

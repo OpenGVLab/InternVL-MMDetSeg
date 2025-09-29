@@ -21,11 +21,11 @@ interval = 10
 runner = dict(type="EpochBasedRunner", max_epochs=500) #40000
 # todo 仅保留了后五个 checkpoint, 而不是最优的！
 checkpoint_config = dict(
-    by_epoch=False,
+    by_epoch=True,
     interval=interval,
     max_keep_ckpts=1,
     create_symlink=False,
-    save_optimizer=True,
+    save_optimizer=False,
 )
 #  metric = 'PdFa' -> ['Pd', 'Fa']
 #  metric = 'ROC'  -> ['TPR', 'FPR', 'Recall', "Precision"]
@@ -33,11 +33,11 @@ checkpoint_config = dict(
 # 如果 real_time=True, 单个推理结果直接进行指标计算, 默认为 False, 所有结果推理结束后统一计算
 evaluation = dict(
     interval=interval,
-    gpu_collect=False,
+    gpu_collect=True,
     by_epoch=True,
     metric=["PdFa", "ROC", "mIoU"],
     ROC_thr=10,
-    real_time=False,
+    real_time=True,
     show=False,
 )  # nan_to_num=0
 find_unused_parameters = True
