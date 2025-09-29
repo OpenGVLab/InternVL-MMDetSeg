@@ -252,3 +252,5 @@ audio/
 *.vscode/
 
 *.yml
+*.json
+*.txt

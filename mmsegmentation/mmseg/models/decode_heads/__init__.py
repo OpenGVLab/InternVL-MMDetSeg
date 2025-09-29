@@ -30,6 +30,7 @@ from .stdc_head import STDCHead
 from .uper_head import UPerHead
 from .mask2former_head import Mask2FormerHead
 from .maskformer_head import MaskFormerHead
+from .dna_head import DNANetDecodeHead
 
 __all__ = [
     'FCNHead', 'PSPHead', 'ASPPHead', 'PSAHead', 'NLHead', 'GCHead', 'CCHead',
@@ -39,4 +40,5 @@ __all__ = [
     'SETRMLAHead', 'DPTHead', 'SETRMLAHead', 'SegmenterMaskTransformerHead',
     'SegformerHead', 'ISAHead', 'STDCHead', 'IterativeDecodeHead',
     'KernelUpdateHead', 'KernelUpdator', 'MaskFormerHead', 'Mask2FormerHead',
+    'DNANetDecodeHead',
 ]

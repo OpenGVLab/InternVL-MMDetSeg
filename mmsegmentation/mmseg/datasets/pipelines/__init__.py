@@ -15,7 +15,7 @@ from .custom_transforms import DNANetTransforms
 
 __all__ = [
      # SIRST ----
-    'DNANetTransforms',
+    'DNANetTransforms','RandomGaussianBlur',
     'CollectToList',
     "LoadDataFromFile",
     'Compose', 'to_tensor', 'ToTensor', 'ImageToTensor', 'ToDataContainer',
