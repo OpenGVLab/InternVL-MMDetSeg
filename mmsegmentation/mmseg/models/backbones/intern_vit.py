@@ -331,8 +331,33 @@ class InternVisionEmbeddings(nn.Module):
         self.num_patches = (self.img_size // self.patch_size) ** 2
         self.num_positions = self.num_patches + 1
         self.position_embedding = nn.Parameter(torch.randn(1, self.num_positions, self.embed_dim))
+        
+        self._pos_embed_cache = {}
+        self._pos_embed_cache_meta = (
+            self.position_embedding.data_ptr(),
+            tuple(self.position_embedding.shape),
+        )
+
+    def _invalidate_pos_embed_cache(self):
+        self._pos_embed_cache = {}
+
+    def _refresh_pos_embed_cache_state(self):
+        current_meta = (
+            self.position_embedding.data_ptr(),
+            tuple(self.position_embedding.shape),
+        )
+        if getattr(self, "_pos_embed_cache_meta", None) != current_meta:
+            self._invalidate_pos_embed_cache()
+            self._pos_embed_cache_meta = current_meta
 
     def _get_pos_embed(self, pos_embed, H, W):
+        
+        self._refresh_pos_embed_cache_state()
+        cache_key = (H, W, pos_embed.device, pos_embed.dtype)
+        cached = self._pos_embed_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        
         target_dtype = pos_embed.dtype
         pos_embed = pos_embed.float().reshape(
             1, self.img_size // self.patch_size, self.img_size // self.patch_size, -1).permute(0, 3, 1, 2)

@@ -1,5 +1,6 @@
 import numpy as np
 from skimage import measure
+import os
 
 # from .metrics import *
 from scipy.special import expit  # 稳定版 sigmoid
@@ -128,6 +129,8 @@ class PD_FA:
             self.thr_range = 255
         elif thr_mode == "sigmoid":
             self.thr_range = 1.0
+        # Whether to transform logits to probabilities via sigmoid inside update
+        #self._apply_sigmoid = (thr_mode == 'sigmoid')
         self.bins = bins
         self.image_area_total = []
         self.image_area_match = []
@@ -138,6 +141,13 @@ class PD_FA:
         self.total_pixels = 0
 
     def update(self, preds, labels):
+        # Optionally map logits to probabilities for sigmoid mode
+        # if self._apply_sigmoid:
+        #     try:
+        #         preds = expit(preds)
+        #     except Exception:
+        #         # Fallback: naive implementation
+        #         preds = 1.0 / (1.0 + np.exp(-np.clip(preds, -20, 20)))
         for iBin in range(self.bins + 1):
             # todo ========
             thr = iBin * (self.thr_range / self.bins)
@@ -298,8 +308,10 @@ def eval_pixel_metrics(
     # ['PdFa', 'ROC', 'mIoU'] 可以一起打包计算，节省计算时间
     metric_objs = {}
     if 'PdFa' in metrics:
+        # Use sigmoid mode to evaluate thresholds over [0,1]
         metric_objs['PdFa'] = PD_FA(num_classes=1, bins=ROC_thr)
     if 'ROC' in metrics:
+        # Evaluate ROC on probabilities as well
         metric_objs['ROC'] = ROCMetric(num_classes=1, bins=ROC_thr)
     if 'mIoU' in metrics:
         metric_objs['mIoU'] = mIoU(num_classes=1)

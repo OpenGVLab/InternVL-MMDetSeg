@@ -23,7 +23,7 @@ def to_tensor(data):
     if isinstance(data, torch.Tensor):
         return data
     elif isinstance(data, np.ndarray):
-        return torch.from_numpy(data)
+        return torch.from_numpy(data.copy())
     elif isinstance(data, Sequence) and not mmcv.is_str(data):
         return torch.tensor(data)
     elif isinstance(data, int):
