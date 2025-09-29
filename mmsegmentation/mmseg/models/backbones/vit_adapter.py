@@ -325,20 +325,20 @@ class InternViTAdapter(InternViT):
         # print('x.shape: ',x.shape)
         if self.use_final_norm:
             if len(self.out_indices) == 4:
-                f1 = self.norm1(c1).to(self.output_dtype).contiguous()
-                f2 = self.norm2(c2).to(self.output_dtype).contiguous()
-                f3 = self.norm3(c3).to(self.output_dtype).contiguous()
-                f4 = self.norm4(c4).to(self.output_dtype).contiguous()
+                f1 = self.norm1(c1.float()).contiguous()
+                f2 = self.norm2(c2.float()).contiguous()
+                f3 = self.norm3(c3.float()).contiguous()
+                f4 = self.norm4(c4.float()).contiguous()
                 if self.only_feat_out:
                     return [f1, f2, f3, f4]
                 return [f1, f2, f3, f4],x
             else:
-                f2 = self.norm2(c2).to(self.output_dtype).contiguous()
-                f3 = self.norm3(c3).to(self.output_dtype).contiguous()
-                f4 = self.norm4(c4).to(self.output_dtype).contiguous()
+                f2 = self.norm2(c2.float()).contiguous()
+                f3 = self.norm3(c3.float()).contiguous()
+                f4 = self.norm4(c4.float()).contiguous()
                 return [f2, f3, f4]
         else:
-            return [c1.to(self.output_dtype).contiguous(),
-                    c2.to(self.output_dtype).contiguous(),
-                    c3.to(self.output_dtype).contiguous(),
-                    c4.to(self.output_dtype).contiguous()]
+            return [c1.float().contiguous(),
+                    c2.float().contiguous(),
+                    c3.float().contiguous(),
+                    c4.float().contiguous()]
